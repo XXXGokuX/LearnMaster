@@ -6,6 +6,12 @@ import { insertCourseSchema, insertEnrollmentSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import express from 'express';
+import fs from 'fs';
+
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -45,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const courseData = {
       ...req.body,
-      content: JSON.parse(req.body.content),
+      content: req.body.content ? JSON.parse(req.body.content) : [],
       thumbnail: files.thumbnail?.[0].path,
       poster: files.poster?.[0].path,
       price: parseInt(req.body.price),
