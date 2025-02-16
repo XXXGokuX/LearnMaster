@@ -21,6 +21,7 @@ import { Redirect } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { z } from "zod";
 
 const categories = [
   "Web Development",
@@ -39,11 +40,21 @@ const levels = [
   { value: "advanced", label: "Advanced" }
 ];
 
+const createCourseSchema = insertCourseSchema.extend({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  category: z.string().min(1, "Category is required"),
+  level: z.string().min(1, "Level is required"),
+  duration: z.string().min(1, "Duration is required"),
+  price: z.number().min(0, "Price must be positive"),
+});
+
 export default function AdminCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
@@ -54,17 +65,20 @@ export default function AdminCourses() {
   });
 
   const form = useForm({
-    resolver: zodResolver(insertCourseSchema),
+    resolver: zodResolver(createCourseSchema),
     defaultValues: {
       title: "",
       description: "",
-      category: "",
+      category: "Other",
       level: "beginner",
       duration: "",
       price: 0,
-      thumbnail: "",
-      poster: "",
-      content: [],
+      content: [
+        {
+          type: "video",
+          title: "Introduction",
+        },
+      ],
     },
   });
 
@@ -76,9 +90,18 @@ export default function AdminCourses() {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       setPosterPreview(null);
       setVideoPreview(null);
+      setIsOpen(false);
+      form.reset();
       toast({
         title: "Course created",
         description: "The course has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error creating course",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -108,19 +131,33 @@ export default function AdminCourses() {
         }
       };
       reader.readAsDataURL(file);
-      form.setValue(type === 'poster' ? 'poster' : 'thumbnail', file);
+      form.setValue(type === 'poster' ? 'poster' : 'thumbnail', file.name);
     }
   };
 
   const onSubmit = (data: any) => {
     const formData = new FormData();
+
+    // Add basic course data
     Object.keys(data).forEach(key => {
       if (key === 'content') {
         formData.append(key, JSON.stringify(data[key]));
-      } else {
-        formData.append(key, data[key]);
+      } else if (key !== 'thumbnail' && key !== 'poster') {
+        formData.append(key, data[key].toString());
       }
     });
+
+    // Add files
+    const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
+    const posterInput = document.querySelector<HTMLInputElement>('#poster');
+
+    if (thumbnailInput?.files?.[0]) {
+      formData.append('thumbnail', thumbnailInput.files[0]);
+    }
+    if (posterInput?.files?.[0]) {
+      formData.append('poster', posterInput.files[0]);
+    }
+
     createMutation.mutate(formData);
   };
 
@@ -128,15 +165,15 @@ export default function AdminCourses() {
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
 
-      <main className="container mx-auto py-8">
+      <main className="container mx-auto py-8 px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Manage Courses</h1>
 
-          <Dialog>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button>Create Course</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Course</DialogTitle>
               </DialogHeader>
@@ -144,74 +181,96 @@ export default function AdminCourses() {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4"
+                  className="space-y-6 py-4"
                 >
-                  <div>
-                    <Label htmlFor="title">Course Title</Label>
-                    <Input id="title" {...form.register("title")} />
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Course Title</Label>
+                      <Input id="title" {...form.register("title")} />
+                      {form.formState.errors.title && (
+                        <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price (in cents)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        {...form.register("price", { valueAsNumber: true })}
+                      />
+                      {form.formState.errors.price && (
+                        <p className="text-sm text-red-500">{form.formState.errors.price.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="description">Course Description</Label>
                     <Textarea
                       id="description"
                       {...form.register("description")}
                     />
+                    {form.formState.errors.description && (
+                      <p className="text-sm text-red-500">{form.formState.errors.description.message}</p>
+                    )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="category">Category</Label>
-                    <Select 
-                      onValueChange={value => form.setValue("category", value)}
-                      defaultValue={form.watch("category")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category</Label>
+                      <Select 
+                        onValueChange={value => form.setValue("category", value)}
+                        defaultValue={form.watch("category")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map(category => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.formState.errors.category && (
+                        <p className="text-sm text-red-500">{form.formState.errors.category.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="level">Level</Label>
+                      <Select 
+                        onValueChange={value => form.setValue("level", value)}
+                        defaultValue={form.watch("level")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {levels.map(level => (
+                            <SelectItem key={level.value} value={level.value}>
+                              {level.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.formState.errors.level && (
+                        <p className="text-sm text-red-500">{form.formState.errors.level.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="level">Level</Label>
-                    <Select 
-                      onValueChange={value => form.setValue("level", value)}
-                      defaultValue={form.watch("level")}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {levels.map(level => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="duration">Duration (e.g., "4 weeks", "30 hours")</Label>
                     <Input id="duration" {...form.register("duration")} />
+                    {form.formState.errors.duration && (
+                      <p className="text-sm text-red-500">{form.formState.errors.duration.message}</p>
+                    )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="price">Price (in cents)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      {...form.register("price", { valueAsNumber: true })}
-                    />
-                  </div>
-
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="video">Course Video</Label>
                     <Input
                       id="video"
@@ -220,17 +279,17 @@ export default function AdminCourses() {
                       onChange={(e) => handleFileChange(e, 'video')}
                     />
                     {videoPreview && (
-                      <div className="mt-2">
+                      <div className="mt-2 rounded-lg overflow-hidden">
                         <video 
                           src={videoPreview} 
                           controls 
-                          className="w-full max-h-[200px] object-contain" 
+                          className="w-full max-h-[200px] object-contain bg-black" 
                         />
                       </div>
                     )}
                   </div>
 
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="poster">Course Poster</Label>
                     <Input
                       id="poster"
@@ -239,11 +298,11 @@ export default function AdminCourses() {
                       onChange={(e) => handleFileChange(e, 'poster')}
                     />
                     {posterPreview && (
-                      <div className="mt-2">
+                      <div className="mt-2 rounded-lg overflow-hidden">
                         <img 
                           src={posterPreview} 
                           alt="Course poster preview" 
-                          className="w-full max-h-[200px] object-contain"
+                          className="w-full max-h-[200px] object-contain bg-gray-100" 
                         />
                       </div>
                     )}
