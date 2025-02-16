@@ -5,7 +5,7 @@ import { Course } from "@shared/schema";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
 
@@ -17,7 +17,7 @@ export default function HomePage() {
     queryKey: ["/api/courses"],
   });
 
-  const { data: enrollments } = useQuery({
+  const { data: enrollments = [] } = useQuery({
     queryKey: ["/api/enrollments"],
   });
 
@@ -26,6 +26,7 @@ export default function HomePage() {
       await apiRequest("POST", "/api/enroll", { courseId });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
       toast({
         title: "Enrolled successfully",
         description: "You can now start learning!",
@@ -33,7 +34,7 @@ export default function HomePage() {
     },
   });
 
-  const enrolledCourseIds = new Set(enrollments?.map((e) => e.courseId));
+  const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,7 +61,7 @@ export default function HomePage() {
                   <div className="mt-4">
                     <Progress
                       value={
-                        enrollments?.find((e) => e.courseId === course.id)
+                        enrollments.find((e) => e.courseId === course.id)
                           ?.progress ?? 0
                       }
                     />

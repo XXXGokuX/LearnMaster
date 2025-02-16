@@ -13,19 +13,19 @@ export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  category: text("category").notNull(),
-  level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull(),
-  duration: text("duration").notNull(),
+  category: text("category").notNull().default("Other"),
+  level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull().default("beginner"),
+  duration: text("duration").notNull().default("TBD"),
   thumbnail: text("thumbnail").notNull(),
-  poster: text("poster").notNull(),
+  poster: text("poster").notNull().default("default-poster.jpg"),
   price: integer("price").notNull(),
   content: json("content").$type<{
     type: "video" | "document" | "quiz";
     title: string;
     url?: string;
     description?: string;
-    duration?: string; // For videos
-    fileSize?: string; // For documents
+    duration?: string;
+    fileSize?: string;
     questions?: { question: string; options: string[]; answer: number }[];
   }[]>().notNull(),
 });
@@ -63,6 +63,8 @@ export const insertEnrollmentSchema = createInsertSchema(enrollments).pick({
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
 export type User = typeof users.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Enrollment = typeof enrollments.$inferSelect;
