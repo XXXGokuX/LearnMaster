@@ -20,6 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Redirect } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
 
 const categories = [
   "Web Development",
@@ -41,6 +42,8 @@ const levels = [
 export default function AdminCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [posterPreview, setPosterPreview] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
@@ -71,6 +74,8 @@ export default function AdminCourses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      setPosterPreview(null);
+      setVideoPreview(null);
       toast({
         title: "Course created",
         description: "The course has been created successfully.",
@@ -90,6 +95,22 @@ export default function AdminCourses() {
       });
     },
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'poster' | 'video') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === 'poster') {
+          setPosterPreview(reader.result as string);
+        } else {
+          setVideoPreview(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+      form.setValue(type === 'poster' ? 'poster' : 'thumbnail', file);
+    }
+  };
 
   const onSubmit = (data: any) => {
     const formData = new FormData();
@@ -191,18 +212,22 @@ export default function AdminCourses() {
                   </div>
 
                   <div>
-                    <Label htmlFor="thumbnail">Course Thumbnail</Label>
+                    <Label htmlFor="video">Course Video</Label>
                     <Input
-                      id="thumbnail"
+                      id="video"
                       type="file"
-                      accept="image/*"
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          form.setValue("thumbnail", file);
-                        }
-                      }}
+                      accept="video/*"
+                      onChange={(e) => handleFileChange(e, 'video')}
                     />
+                    {videoPreview && (
+                      <div className="mt-2">
+                        <video 
+                          src={videoPreview} 
+                          controls 
+                          className="w-full max-h-[200px] object-contain" 
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -211,13 +236,17 @@ export default function AdminCourses() {
                       id="poster"
                       type="file"
                       accept="image/*"
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          form.setValue("poster", file);
-                        }
-                      }}
+                      onChange={(e) => handleFileChange(e, 'poster')}
                     />
+                    {posterPreview && (
+                      <div className="mt-2">
+                        <img 
+                          src={posterPreview} 
+                          alt="Course poster preview" 
+                          className="w-full max-h-[200px] object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <Button
