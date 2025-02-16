@@ -1,0 +1,20 @@
+{
+  "variant": "professional",
+  "primary": "#2962FF",
+  "accent": "#FF5722",
+  "appearance": "light",
+  "radius": 0.5,
+  "colors": {
+    "secondary": "#4CAF50",
+    "background": "#F5F7FA", 
+    "foreground": "#333333",
+    "success": "#4CAF50",
+    "chart": {
+      "1": "#2962FF",
+      "2": "#4CAF50",
+      "3": "#FF5722",
+      "4": "#FFC107",
+      "5": "#9C27B0"
+    }
+  }
+}
