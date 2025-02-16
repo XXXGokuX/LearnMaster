@@ -19,12 +19,23 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Redirect } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const thumbnails = [
-  "https://images.unsplash.com/photo-1472289065668-ce650ac443d2",
-  "https://images.unsplash.com/photo-1493723843671-1d655e66ac1c",
-  "https://images.unsplash.com/photo-1557804483-ef3ae78eca57",
-  "https://images.unsplash.com/photo-1517048676732-d65bc937f952",
+const categories = [
+  "Web Development",
+  "Mobile Development",
+  "Data Science",
+  "Machine Learning",
+  "Digital Marketing",
+  "Business",
+  "Design",
+  "Other"
+];
+
+const levels = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" }
 ];
 
 export default function AdminCourses() {
@@ -44,14 +55,18 @@ export default function AdminCourses() {
     defaultValues: {
       title: "",
       description: "",
+      category: "",
+      level: "beginner",
+      duration: "",
       price: 0,
-      thumbnail: thumbnails[0],
+      thumbnail: "",
+      poster: "",
       content: [],
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: FormData) => {
       await apiRequest("POST", "/api/courses", data);
     },
     onSuccess: () => {
@@ -76,41 +91,96 @@ export default function AdminCourses() {
     },
   });
 
+  const onSubmit = (data: any) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (key === 'content') {
+        formData.append(key, JSON.stringify(data[key]));
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+    createMutation.mutate(formData);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
-      
+
       <main className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Manage Courses</h1>
-          
+
           <Dialog>
             <DialogTrigger asChild>
               <Button>Create Course</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create New Course</DialogTitle>
               </DialogHeader>
-              
+
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+                  onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-4"
                 >
                   <div>
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">Course Title</Label>
                     <Input id="title" {...form.register("title")} />
                   </div>
-                  
+
                   <div>
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">Course Description</Label>
                     <Textarea
                       id="description"
                       {...form.register("description")}
                     />
                   </div>
-                  
+
+                  <div>
+                    <Label htmlFor="category">Category</Label>
+                    <Select 
+                      onValueChange={value => form.setValue("category", value)}
+                      defaultValue={form.watch("category")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map(category => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="level">Level</Label>
+                    <Select 
+                      onValueChange={value => form.setValue("level", value)}
+                      defaultValue={form.watch("level")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {levels.map(level => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="duration">Duration (e.g., "4 weeks", "30 hours")</Label>
+                    <Input id="duration" {...form.register("duration")} />
+                  </div>
+
                   <div>
                     <Label htmlFor="price">Price (in cents)</Label>
                     <Input
@@ -119,30 +189,37 @@ export default function AdminCourses() {
                       {...form.register("price", { valueAsNumber: true })}
                     />
                   </div>
-                  
+
                   <div>
-                    <Label>Thumbnail</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      {thumbnails.map((url) => (
-                        <div
-                          key={url}
-                          className={`cursor-pointer border-2 rounded ${
-                            form.watch("thumbnail") === url
-                              ? "border-primary"
-                              : "border-transparent"
-                          }`}
-                          onClick={() => form.setValue("thumbnail", url)}
-                        >
-                          <img
-                            src={url}
-                            alt="thumbnail"
-                            className="w-full h-24 object-cover rounded"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <Label htmlFor="thumbnail">Course Thumbnail</Label>
+                    <Input
+                      id="thumbnail"
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          form.setValue("thumbnail", file);
+                        }
+                      }}
+                    />
                   </div>
-                  
+
+                  <div>
+                    <Label htmlFor="poster">Course Poster</Label>
+                    <Input
+                      id="poster"
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          form.setValue("poster", file);
+                        }
+                      }}
+                    />
+                  </div>
+
                   <Button
                     type="submit"
                     className="w-full"
@@ -165,7 +242,12 @@ export default function AdminCourses() {
                 className="w-full h-48 object-cover rounded-lg mb-4"
               />
               <h2 className="text-xl font-semibold mb-2">{course.title}</h2>
-              <p className="text-gray-600 mb-4">{course.description}</p>
+              <p className="text-gray-600 mb-2">{course.description}</p>
+              <div className="space-y-2 mb-4">
+                <p><span className="font-semibold">Category:</span> {course.category}</p>
+                <p><span className="font-semibold">Level:</span> {course.level}</p>
+                <p><span className="font-semibold">Duration:</span> {course.duration}</p>
+              </div>
               <div className="flex justify-between items-center">
                 <p className="font-semibold">${course.price / 100}</p>
                 <Button

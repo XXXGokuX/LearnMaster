@@ -3,6 +3,21 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertCourseSchema, insertEnrollmentSchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import express from 'express';
+
+// Configure multer for file uploads
+const multerStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -19,12 +34,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(course);
   });
 
-  app.post("/api/courses", async (req, res) => {
+  app.post("/api/courses", upload.fields([
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'poster', maxCount: 1 }
+  ]), async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
       return res.status(403).send("Unauthorized");
     }
-    const parsed = insertCourseSchema.safeParse(req.body);
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const courseData = {
+      ...req.body,
+      content: JSON.parse(req.body.content),
+      thumbnail: files.thumbnail?.[0].path,
+      poster: files.poster?.[0].path,
+      price: parseInt(req.body.price),
+    };
+
+    const parsed = insertCourseSchema.safeParse(courseData);
     if (!parsed.success) return res.status(400).json(parsed.error);
+
     const course = await storage.createCourse(parsed.data);
     res.status(201).json(course);
   });
@@ -69,6 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await storage.updateProgress(req.user.id, courseId, progress);
     res.sendStatus(200);
   });
+
+  // Serve uploaded files
+  app.use('/uploads', express.static('uploads'));
 
   const httpServer = createServer(app);
   return httpServer;

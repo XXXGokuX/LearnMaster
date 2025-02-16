@@ -13,12 +13,19 @@ export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  category: text("category").notNull(),
+  level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull(),
+  duration: text("duration").notNull(),
   thumbnail: text("thumbnail").notNull(),
+  poster: text("poster").notNull(),
   price: integer("price").notNull(),
   content: json("content").$type<{
-    type: "video" | "pdf" | "quiz";
+    type: "video" | "document" | "quiz";
     title: string;
     url?: string;
+    description?: string;
+    duration?: string; // For videos
+    fileSize?: string; // For documents
     questions?: { question: string; options: string[]; answer: number }[];
   }[]>().notNull(),
 });
@@ -41,7 +48,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertCourseSchema = createInsertSchema(courses).pick({
   title: true,
   description: true,
+  category: true,
+  level: true,
+  duration: true,
   thumbnail: true,
+  poster: true,
   price: true,
   content: true,
 });
