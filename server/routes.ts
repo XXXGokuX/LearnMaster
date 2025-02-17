@@ -8,10 +8,10 @@ import path from "path";
 import express from 'express';
 import fs from 'fs';
 
-// Create uploads directory if it doesn't exist
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads', { recursive: true });
-}
+// Create uploads directory if it doesn't exist (This is redundant as it's handled within the POST route now)
+// if (!fs.existsSync('uploads')) {
+//   fs.mkdirSync('uploads', { recursive: true });
+// }
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -59,8 +59,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Both thumbnail and poster files are required");
       }
 
-      // Ensure uploads directory exists (already handled above)
-
+      // Ensure uploads directory exists
+      if (!fs.existsSync('uploads')) {
+        fs.mkdirSync('uploads', { recursive: true });
+      }
 
       const courseData = {
         title: req.body.title,

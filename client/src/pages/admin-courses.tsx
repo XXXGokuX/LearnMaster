@@ -84,7 +84,12 @@ export default function AdminCourses() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      await apiRequest("POST", "/api/courses", data);
+      const response = await apiRequest("POST", "/api/courses", data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create course");
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
@@ -98,6 +103,7 @@ export default function AdminCourses() {
       });
     },
     onError: (error: Error) => {
+      console.error('Course creation error:', error);
       toast({
         title: "Error creating course",
         description: error.message,
@@ -135,50 +141,59 @@ export default function AdminCourses() {
   };
 
   const onSubmit = (data: any) => {
-    const formData = new FormData();
+    try {
+      const formData = new FormData();
 
-    // Add basic course data
-    formData.append('title', data.title);
-    formData.append('description', data.description);
-    formData.append('category', data.category);
-    formData.append('level', data.level);
-    formData.append('duration', data.duration);
-    formData.append('price', data.price.toString());
+      // Add basic course data
+      formData.append('title', data.title);
+      formData.append('description', data.description);
+      formData.append('category', data.category);
+      formData.append('level', data.level);
+      formData.append('duration', data.duration);
+      formData.append('price', data.price.toString());
 
-    // Add default content
-    formData.append('content', JSON.stringify([
-      {
-        type: "video",
-        title: "Introduction",
-        description: "Welcome to the course",
+      // Add default content
+      formData.append('content', JSON.stringify([
+        {
+          type: "video",
+          title: "Introduction",
+          description: "Welcome to the course",
+        }
+      ]));
+
+      // Get file inputs
+      const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
+      const posterInput = document.querySelector<HTMLInputElement>('#poster');
+
+      // Validate files
+      if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
+        toast({
+          title: "Missing files",
+          description: "Please upload both a video thumbnail and a poster image",
+          variant: "destructive",
+        });
+        return;
       }
-    ]));
 
-    // Get file inputs
-    const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
-    const posterInput = document.querySelector<HTMLInputElement>('#poster');
+      // Add files
+      formData.append('thumbnail', thumbnailInput.files[0]);
+      formData.append('poster', posterInput.files[0]);
 
-    // Validate files
-    if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
+      // Log formData contents for debugging
+      console.log('FormData contents:');
+      formData.forEach((value, key) => {
+        console.log(`${key}:`, value);
+      });
+
+      createMutation.mutate(formData);
+    } catch (error) {
+      console.error('Form submission error:', error);
       toast({
-        title: "Missing files",
-        description: "Please upload both a video thumbnail and a poster image",
+        title: "Error",
+        description: "Failed to prepare course data",
         variant: "destructive",
       });
-      return;
     }
-
-    // Add files
-    formData.append('thumbnail', thumbnailInput.files[0]);
-    formData.append('poster', posterInput.files[0]);
-
-    // Log formData contents for debugging
-    console.log('FormData contents:');
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}: ${value}`);
-    }
-
-    createMutation.mutate(formData);
   };
 
   return (
