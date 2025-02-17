@@ -7,6 +7,8 @@ import multer from "multer";
 import path from "path";
 import express from 'express';
 import fs from 'fs';
+import { hashPassword } from './auth'; // Assuming hashPassword function exists
+
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -39,6 +41,35 @@ const upload = multer({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
+
+  // Add this to the registerRoutes function before the course routes
+  app.post("/api/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+
+      const hashedPassword = await hashPassword(req.body.password);
+      const user = await storage.createUser({
+        ...req.body,
+        password: hashedPassword,
+        role: "student" // Force role to be student when created by admin
+      });
+
+      res.status(201).json(user);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ 
+        error: "Failed to create user",
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 
   // Course routes
   app.get("/api/courses", async (req, res) => {

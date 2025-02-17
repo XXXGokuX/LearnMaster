@@ -14,7 +14,7 @@ import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Redirect } from "wouter";
@@ -23,6 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
+import { InsertUser, insertUserSchema } from "@shared/schema";
+
 
 const categories = [
   "Web Development",
@@ -198,6 +200,37 @@ export default function AdminCourses() {
     },
   });
 
+  const userForm = useForm<InsertUser>({
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      role: "student" // Admin can only create student users
+    }
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: InsertUser) => {
+      const res = await apiRequest("POST", "/api/users", userData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+      userForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error creating user",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
   }
@@ -206,149 +239,184 @@ export default function AdminCourses() {
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
 
-      <main className="container mx-auto py-8 px-4">
+      <main className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Manage Courses</h1>
-
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button>Create Course</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Course</DialogTitle>
-              </DialogHeader>
-
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6 py-4"
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Course Title</Label>
-                    <Input id="title" {...form.register("title")} />
-                    {form.formState.errors.title && (
-                      <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Course Description</Label>
-                    <Textarea
-                      id="description"
-                      {...form.register("description")}
-                    />
-                    {form.formState.errors.description && (
-                      <p className="text-sm text-red-500">{form.formState.errors.description.message}</p>
-                    )}
-                  </div>
-
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select
-                        onValueChange={value => form.setValue("category", value)}
-                        defaultValue={form.getValues("category")}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map(category => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {form.formState.errors.category && (
-                        <p className="text-sm text-red-500">{form.formState.errors.category.message}</p>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <div className="space-x-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">Create User</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New User</DialogTitle>
+                </DialogHeader>
+                <Form {...userForm}>
+                  <form onSubmit={userForm.handleSubmit((data) => createUserMutation.mutate(data))} className="space-y-4">
+                    <div>
+                      <Label htmlFor="username">Username</Label>
+                      <Input id="username" {...userForm.register("username")} />
+                      {userForm.formState.errors.username && (
+                        <p className="text-sm text-red-500">{userForm.formState.errors.username.message}</p>
                       )}
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="level">Level</Label>
-                      <Select
-                        onValueChange={value => form.setValue("level", value)}
-                        defaultValue={form.getValues("level")}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {levels.map(level => (
-                            <SelectItem key={level.value} value={level.value}>
-                              {level.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {form.formState.errors.level && (
-                        <p className="text-sm text-red-500">{form.formState.errors.level.message}</p>
+                    <div>
+                      <Label htmlFor="password">Password</Label>
+                      <Input id="password" type="password" {...userForm.register("password")} />
+                      {userForm.formState.errors.password && (
+                        <p className="text-sm text-red-500">{userForm.formState.errors.password.message}</p>
                       )}
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (e.g., "4 weeks", "30 hours")</Label>
-                    <Input id="duration" {...form.register("duration")} />
-                    {form.formState.errors.duration && (
-                      <p className="text-sm text-red-500">{form.formState.errors.duration.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="thumbnail-upload">Course Thumbnail</Label>
-                    <Input
-                      id="thumbnail-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'thumbnail')}
-                    />
-                    {thumbnailPreview && (
-                      <div className="mt-2 rounded-lg overflow-hidden">
-                        <img
-                          src={thumbnailPreview}
-                          alt="Thumbnail preview"
-                          className="w-full max-h-[200px] object-contain bg-black"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="video-upload">Course Video</Label>
-                    <Input
-                      id="video-upload"
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => handleFileChange(e, 'video')}
-                    />
-                    {videoFile && (
-                      <p className="mt-2 text-sm text-gray-600">
-                        Selected video: {videoFile.name}
-                      </p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={createMutation.isPending}
-                  >
-                    {createMutation.isPending ? (
-                      <>
+                    <Button type="submit" className="w-full" disabled={createUserMutation.isPending}>
+                      {createUserMutation.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating Course...
-                      </>
-                    ) : (
-                      "Create Course"
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                      ) : "Create User"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button>Create Course</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Course</DialogTitle>
+                </DialogHeader>
+
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6 py-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Course Title</Label>
+                      <Input id="title" {...form.register("title")} />
+                      {form.formState.errors.title && (
+                        <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Course Description</Label>
+                      <Textarea
+                        id="description"
+                        {...form.register("description")}
+                      />
+                      {form.formState.errors.description && (
+                        <p className="text-sm text-red-500">{form.formState.errors.description.message}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Category</Label>
+                        <Select
+                          onValueChange={value => form.setValue("category", value)}
+                          defaultValue={form.getValues("category")}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map(category => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.category && (
+                          <p className="text-sm text-red-500">{form.formState.errors.category.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="level">Level</Label>
+                        <Select
+                          onValueChange={value => form.setValue("level", value)}
+                          defaultValue={form.getValues("level")}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {levels.map(level => (
+                              <SelectItem key={level.value} value={level.value}>
+                                {level.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.level && (
+                          <p className="text-sm text-red-500">{form.formState.errors.level.message}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="duration">Duration (e.g., "4 weeks", "30 hours")</Label>
+                      <Input id="duration" {...form.register("duration")} />
+                      {form.formState.errors.duration && (
+                        <p className="text-sm text-red-500">{form.formState.errors.duration.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="thumbnail-upload">Course Thumbnail</Label>
+                      <Input
+                        id="thumbnail-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, 'thumbnail')}
+                      />
+                      {thumbnailPreview && (
+                        <div className="mt-2 rounded-lg overflow-hidden">
+                          <img
+                            src={thumbnailPreview}
+                            alt="Thumbnail preview"
+                            className="w-full max-h-[200px] object-contain bg-black"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="video-upload">Course Video</Label>
+                      <Input
+                        id="video-upload"
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => handleFileChange(e, 'video')}
+                      />
+                      {videoFile && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          Selected video: {videoFile.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={createMutation.isPending}
+                    >
+                      {createMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Course...
+                        </>
+                      ) : (
+                        "Create Course"
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
