@@ -9,6 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
 import { Loader2 } from "lucide-react";
+import { Redirect } from "wouter";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -19,8 +20,8 @@ export default function HomePage() {
   });
 
   const { data: enrollments = [], isLoading: isLoadingEnrollments } = useQuery<Enrollment[]>({
-    queryKey: ["/api/enrollments", user?.id], // Make query key user-specific
-    enabled: !!user, // Only fetch enrollments if user is logged in
+    queryKey: ["/api/enrollments", user?.id],
+    enabled: !!user && user.role === "student",
   });
 
   const enrollMutation = useMutation({
@@ -28,7 +29,6 @@ export default function HomePage() {
       await apiRequest("POST", "/api/enroll", { courseId });
     },
     onSuccess: () => {
-      // Invalidate enrollments for the specific user
       queryClient.invalidateQueries({ queryKey: ["/api/enrollments", user?.id] });
       toast({
         title: "Enrolled successfully",
@@ -44,8 +44,12 @@ export default function HomePage() {
     },
   });
 
-  // Create a Set of enrolled course IDs for efficient lookup
   const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
+
+  // Redirect admin users to admin dashboard
+  if (user?.role === "admin") {
+    return <Redirect to="/admin/courses" />;
+  }
 
   if (isLoadingCourses || isLoadingEnrollments) {
     return (

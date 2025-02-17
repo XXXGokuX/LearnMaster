@@ -23,6 +23,7 @@ export interface IStorage {
   getEnrollments(userId: number): Promise<Enrollment[]>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateProgress(userId: number, courseId: number, progress: number): Promise<void>;
+  getAllEnrollments(): Promise<Enrollment[]>; // Added here
 
   sessionStore: session.Store;
 }
@@ -139,6 +140,10 @@ export class DatabaseStorage implements IStorage {
           eq(enrollments.courseId, courseId)
         )
       );
+  }
+
+  async getAllEnrollments(): Promise<Enrollment[]> { // Added here
+    return await db.select().from(enrollments);
   }
 }
 

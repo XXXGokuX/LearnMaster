@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Book, GraduationCap, LogOut, User } from "lucide-react";
+import { Book, GraduationCap, LogOut, User, Users } from "lucide-react";
 
 const avatars = [
   "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
@@ -33,18 +33,28 @@ export function DashboardNav() {
           </Link>
 
           <div className="hidden md:flex space-x-4">
-            <Link href="/">
-              <a className="text-gray-600 hover:text-gray-900 flex items-center">
-                <Book className="w-4 h-4 mr-2" />
-                Courses
-              </a>
-            </Link>
-            {user?.role === "admin" && (
-              <Link href="/admin/courses">
-                <a className="text-gray-600 hover:text-gray-900">
-                  Manage Courses
+            {user?.role === "student" ? (
+              <Link href="/">
+                <a className="text-gray-600 hover:text-gray-900 flex items-center">
+                  <Book className="w-4 h-4 mr-2" />
+                  My Courses
                 </a>
               </Link>
+            ) : user?.role === "admin" && (
+              <>
+                <Link href="/admin/courses">
+                  <a className="text-gray-600 hover:text-gray-900 flex items-center">
+                    <Book className="w-4 h-4 mr-2" />
+                    Manage Courses
+                  </a>
+                </Link>
+                <Link href="/admin/students">
+                  <a className="text-gray-600 hover:text-gray-900 flex items-center">
+                    <Users className="w-4 h-4 mr-2" />
+                    Students
+                  </a>
+                </Link>
+              </>
             )}
           </div>
         </div>

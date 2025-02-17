@@ -41,7 +41,23 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
-  // Add this to the registerRoutes function before the course routes
+  // Add this endpoint before the course routes
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const users = await storage.getAllUsers();
+    res.json(users);
+  });
+
+  app.get("/api/all-enrollments", async (req, res) => {
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const enrollments = await storage.getAllEnrollments();
+    res.json(enrollments);
+  });
+
   app.post("/api/users", async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
       return res.status(403).send("Unauthorized");
