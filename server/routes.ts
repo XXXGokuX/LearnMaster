@@ -101,12 +101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Thumbnail and video files are required");
       }
 
-      // Ensure uploads directory exists
-      ['uploads', 'uploads/videos'].forEach(dir => {
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-      });
+      // Ensure uploads directory exists (This is redundant as it's already done in multerStorage)
+      // ['uploads', 'uploads/videos'].forEach(dir => {
+      //   if (!fs.existsSync(dir)) {
+      //     fs.mkdirSync(dir, { recursive: true });
+      //   }
+      // });
 
       const courseData = {
         title: req.body.title,
@@ -175,8 +175,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve uploaded files
-  app.use('/uploads', express.static('uploads'));
-  // Add static file serving configuration
   // Make uploads directory accessible
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
     setHeaders: (res, filepath) => {
@@ -185,6 +183,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   }));
+
+  // Ensure uploads directories exist
+  ['uploads', 'uploads/videos'].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+
+  // Add logging middleware for video requests
+  app.use('/uploads', (req, res, next) => {
+    console.log('Video request:', req.url);
+    console.log('File path:', path.join(process.cwd(), 'uploads', req.url));
+    next();
+  });
 
   const httpServer = createServer(app);
   return httpServer;
