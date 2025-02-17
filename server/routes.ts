@@ -8,23 +8,34 @@ import path from "path";
 import express from 'express';
 import fs from 'fs';
 
-// Create uploads directory if it doesn't exist (This is redundant as it's handled within the POST route now)
-// if (!fs.existsSync('uploads')) {
-//   fs.mkdirSync('uploads', { recursive: true });
-// }
-
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/')
+    // Create specific directories for different file types
+    let uploadDir = 'uploads';
+    if (file.fieldname === 'video') {
+      uploadDir = 'uploads/videos';
+    }
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-const upload = multer({ storage: multerStorage });
+const upload = multer({ 
+  storage: multerStorage,
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB limit for video files
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -43,7 +54,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/courses", upload.fields([
     { name: 'thumbnail', maxCount: 1 },
-    { name: 'poster', maxCount: 1 }
+    { name: 'poster', maxCount: 1 },
+    { name: 'video', maxCount: 1 }
   ]), async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
       return res.status(403).send("Unauthorized");
@@ -55,14 +67,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-      if (!files.thumbnail?.[0] || !files.poster?.[0]) {
-        return res.status(400).send("Both thumbnail and poster files are required");
+      if (!files.thumbnail?.[0] || !files.poster?.[0] || !files.video?.[0]) {
+        return res.status(400).send("Thumbnail, poster, and video files are required");
       }
 
       // Ensure uploads directory exists
-      if (!fs.existsSync('uploads')) {
-        fs.mkdirSync('uploads', { recursive: true });
-      }
+      ['uploads', 'uploads/videos'].forEach(dir => {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      });
 
       const courseData = {
         title: req.body.title,
@@ -72,6 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         duration: req.body.duration,
         thumbnail: `/uploads/${files.thumbnail[0].filename}`,
         poster: `/uploads/${files.poster[0].filename}`,
+        video: `/uploads/videos/${files.video[0].filename}`, // Added video path
         price: parseInt(req.body.price),
         content: JSON.parse(req.body.content)
       };

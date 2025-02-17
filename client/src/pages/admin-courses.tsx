@@ -41,7 +41,6 @@ const levels = [
   { value: "advanced", label: "Advanced" }
 ];
 
-// Create a separate schema for form validation that doesn't include file fields
 const courseFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
@@ -57,7 +56,8 @@ export default function AdminCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const form = useForm<CourseFormData>({
@@ -99,7 +99,8 @@ export default function AdminCourses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       setPosterPreview(null);
-      setVideoPreview(null);
+      setThumbnailPreview(null);
+      setVideoFile(null);
       setIsOpen(false);
       form.reset();
       toast({
@@ -117,18 +118,22 @@ export default function AdminCourses() {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'poster' | 'video') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'poster' | 'video') => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (type === 'poster') {
-          setPosterPreview(reader.result as string);
-        } else {
-          setVideoPreview(reader.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      if (type === 'video') {
+        setVideoFile(file);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (type === 'poster') {
+            setPosterPreview(reader.result as string);
+          } else {
+            setThumbnailPreview(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -136,14 +141,15 @@ export default function AdminCourses() {
     console.log("Form submitted, validation passed with values:", formValues);
 
     // Get file inputs
-    const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
+    const thumbnailInput = document.querySelector<HTMLInputElement>('#thumbnail');
     const posterInput = document.querySelector<HTMLInputElement>('#poster');
+    const videoInput = document.querySelector<HTMLInputElement>('#video');
 
     // Check for required files
-    if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
+    if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0] || !videoInput?.files?.[0]) {
       toast({
         title: "Missing files",
-        description: "Please upload both a video thumbnail and a poster image",
+        description: "Please upload thumbnail, poster, and video files",
         variant: "destructive",
       });
       return;
@@ -158,21 +164,25 @@ export default function AdminCourses() {
       });
 
       // Add files
-      formData.append('thumbnail', thumbnailInput.files[0]);
-      formData.append('poster', posterInput.files[0]);
+      formData.append('thumbnail', thumbnailInput?.files[0]);
+      formData.append('poster', posterInput?.files[0]);
+      formData.append('video', videoInput?.files[0]);
 
-      // Add default content
+      // Add default content with video information
       formData.append('content', JSON.stringify([
         {
           type: "video",
-          title: "Introduction",
-          description: "Welcome to the course",
+          title: formValues.title,
+          description: "Course introduction video",
+          url: `/uploads/videos/${videoInput?.files[0].name}`,
+          duration: "TBD", // This will be calculated on the server
         }
       ]));
 
       console.log('Submitting form with files:', {
-        thumbnail: thumbnailInput.files[0],
-        poster: posterInput.files[0]
+        thumbnail: thumbnailInput?.files[0],
+        poster: posterInput?.files[0],
+        video: videoInput?.files[0]
       });
 
       // Submit the form
@@ -313,17 +323,17 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="video">Course Thumbnail</Label>
+                    <Label htmlFor="thumbnail">Course Thumbnail</Label>
                     <Input
-                      id="video"
+                      id="thumbnail"
                       type="file"
                       accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'video')}
+                      onChange={(e) => handleFileChange(e, 'thumbnail')}
                     />
-                    {videoPreview && (
+                    {thumbnailPreview && (
                       <div className="mt-2 rounded-lg overflow-hidden">
                         <img
-                          src={videoPreview}
+                          src={thumbnailPreview}
                           alt="Thumbnail preview"
                           className="w-full max-h-[200px] object-contain bg-black"
                         />
@@ -347,6 +357,21 @@ export default function AdminCourses() {
                           className="w-full max-h-[200px] object-contain bg-gray-100"
                         />
                       </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="video">Course Video</Label>
+                    <Input
+                      id="video"
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleFileChange(e, 'video')}
+                    />
+                    {videoFile && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        Selected video: {videoFile.name}
+                      </p>
                     )}
                   </div>
 
@@ -389,7 +414,11 @@ export default function AdminCourses() {
                 <p className="font-semibold">${course.price / 100}</p>
                 <Button
                   variant="destructive"
-                  onClick={() => deleteMutation.mutate(course.id)}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to delete this course?')) {
+                      deleteMutation.mutate(course.id);
+                    }
+                  }}
                   disabled={deleteMutation.isPending}
                 >
                   Delete
