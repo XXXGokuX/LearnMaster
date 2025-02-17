@@ -41,7 +41,8 @@ const levels = [
   { value: "advanced", label: "Advanced" }
 ];
 
-const createCourseSchema = insertCourseSchema.extend({
+// Create a separate schema for form validation that doesn't include file fields
+const courseFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
@@ -50,6 +51,8 @@ const createCourseSchema = insertCourseSchema.extend({
   price: z.number().min(0, "Price must be positive"),
 });
 
+type CourseFormData = z.infer<typeof courseFormSchema>;
+
 export default function AdminCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -57,8 +60,8 @@ export default function AdminCourses() {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  const form = useForm({
-    resolver: zodResolver(createCourseSchema),
+  const form = useForm<CourseFormData>({
+    resolver: zodResolver(courseFormSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -129,19 +132,34 @@ export default function AdminCourses() {
     }
   };
 
-  const onSubmit = async (formValues: z.infer<typeof createCourseSchema>) => {
+  const onSubmit = async (formValues: CourseFormData) => {
     console.log("Form submitted, validation passed with values:", formValues);
+
+    // Get file inputs
+    const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
+    const posterInput = document.querySelector<HTMLInputElement>('#poster');
+
+    // Check for required files
+    if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
+      toast({
+        title: "Missing files",
+        description: "Please upload both a video thumbnail and a poster image",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const formData = new FormData();
 
-      // Add basic course data
-      formData.append('title', formValues.title);
-      formData.append('description', formValues.description);
-      formData.append('category', formValues.category);
-      formData.append('level', formValues.level);
-      formData.append('duration', formValues.duration);
-      formData.append('price', formValues.price.toString());
+      // Add form values
+      Object.entries(formValues).forEach(([key, value]) => {
+        formData.append(key, value.toString());
+      });
+
+      // Add files
+      formData.append('thumbnail', thumbnailInput.files[0]);
+      formData.append('poster', posterInput.files[0]);
 
       // Add default content
       formData.append('content', JSON.stringify([
@@ -152,36 +170,12 @@ export default function AdminCourses() {
         }
       ]));
 
-      // Get file inputs
-      const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
-      const posterInput = document.querySelector<HTMLInputElement>('#poster');
-
-      // Log file inputs
-      console.log('Thumbnail input:', thumbnailInput?.files);
-      console.log('Poster input:', posterInput?.files);
-
-      // Validate files
-      if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
-        toast({
-          title: "Missing files",
-          description: "Please upload both a video thumbnail and a poster image",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Add files
-      formData.append('thumbnail', thumbnailInput.files[0]);
-      formData.append('poster', posterInput.files[0]);
-
-      // Log formData contents for debugging
-      console.log('FormData contents:');
-      formData.forEach((value, key) => {
-        console.log(`${key}:`, value);
+      console.log('Submitting form with files:', {
+        thumbnail: thumbnailInput.files[0],
+        poster: posterInput.files[0]
       });
 
-      // Trigger mutation
-      console.log('Triggering createMutation...');
+      // Submit the form
       createMutation.mutate(formData);
     } catch (error) {
       console.error('Form submission error:', error);
@@ -319,18 +313,18 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="video">Course Video</Label>
+                    <Label htmlFor="video">Course Thumbnail</Label>
                     <Input
                       id="video"
                       type="file"
-                      accept="video/*"
+                      accept="image/*"
                       onChange={(e) => handleFileChange(e, 'video')}
                     />
                     {videoPreview && (
                       <div className="mt-2 rounded-lg overflow-hidden">
-                        <video
+                        <img
                           src={videoPreview}
-                          controls
+                          alt="Thumbnail preview"
                           className="w-full max-h-[200px] object-contain bg-black"
                         />
                       </div>
@@ -360,11 +354,6 @@ export default function AdminCourses() {
                     type="submit"
                     className="w-full"
                     disabled={createMutation.isPending}
-                    onClick={() => {
-                      console.log('Submit button clicked');
-                      console.log('Current form values:', form.getValues());
-                      console.log('Form errors:', form.formState.errors);
-                    }}
                   >
                     {createMutation.isPending ? (
                       <>
