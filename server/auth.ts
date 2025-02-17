@@ -28,6 +28,18 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+async function ensureAdminUser() {
+  const adminUser = await storage.getUserByUsername("admin");
+  if (!adminUser) {
+    await storage.createUser({
+      username: "admin",
+      password: await hashPassword("admin"),
+      role: "admin",
+    });
+    console.log("Default admin user created");
+  }
+}
+
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET!,
@@ -40,6 +52,9 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Ensure admin user exists when setting up auth
+  ensureAdminUser().catch(console.error);
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
@@ -64,13 +79,11 @@ export function setupAuth(app: Express) {
       return res.status(400).send("Username already exists");
     }
 
-    const allUsers = await storage.getAllUsers();
-    const isFirstUser = allUsers.length === 0;
-
+    // Force role to be student for all new registrations
     const user = await storage.createUser({
       ...req.body,
       password: await hashPassword(req.body.password),
-      role: isFirstUser ? "admin" : "student",
+      role: "student", // Force role to be student
     });
 
     req.login(user, (err) => {
