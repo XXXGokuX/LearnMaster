@@ -78,13 +78,18 @@ export default function AdminCourses() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      console.log("Submitting form data...");
-      const response = await apiRequest("POST", "/api/courses", data);
+    mutationFn: async (formData: FormData) => {
+      console.log("Creating course with FormData...");
+      const response = await fetch("/api/courses", {
+        method: "POST",
+        body: formData,
+      });
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to create course");
       }
+
       return response.json();
     },
     onSuccess: () => {
@@ -169,7 +174,7 @@ export default function AdminCourses() {
         console.log(`${key}:`, value);
       });
 
-      await createMutation.mutateAsync(formData);
+      createMutation.mutate(formData);
     } catch (error) {
       console.error('Form submission error:', error);
       toast({
