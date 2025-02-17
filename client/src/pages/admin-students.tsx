@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Course, User, Enrollment } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Redirect } from "wouter";
-import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -66,47 +65,27 @@ export default function AdminStudents() {
                 <TableRow>
                   <TableHead>Username</TableHead>
                   <TableHead>Enrolled Courses</TableHead>
-                  <TableHead>Average Progress</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {students?.filter(s => s.role === "student").map((student) => {
                   const studentEnrollments = getStudentEnrollments(student.id);
-                  const avgProgress = studentEnrollments.length
-                    ? Math.round(
-                        studentEnrollments.reduce((acc, curr) => acc + curr.progress, 0) /
-                          studentEnrollments.length
-                      )
-                    : 0;
 
                   return (
                     <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.username}</TableCell>
+                      <TableCell className="font-medium">
+                        {student.username}
+                      </TableCell>
                       <TableCell>
                         <div className="space-y-2">
                           {studentEnrollments.map((enrollment) => (
                             <div key={enrollment.id} className="text-sm">
-                              <p>{getCourseTitle(enrollment.courseId)}</p>
-                              <div className="flex items-center gap-2">
-                                <Progress
-                                  value={enrollment.progress}
-                                  className="w-32"
-                                />
-                                <span className="text-xs text-gray-500">
-                                  {enrollment.progress}%
-                                </span>
-                              </div>
+                              {getCourseTitle(enrollment.courseId)}
                             </div>
                           ))}
                           {studentEnrollments.length === 0 && (
                             <span className="text-gray-500">No courses enrolled</span>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={avgProgress} className="w-32" />
-                          <span>{avgProgress}%</span>
                         </div>
                       </TableCell>
                     </TableRow>
