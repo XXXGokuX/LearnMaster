@@ -54,19 +54,6 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600">{course.description}</p>
-                <div className="mt-4">
-                  <p className="font-semibold">${course.price / 100}</p>
-                </div>
-                {enrolledCourseIds.has(course.id) && (
-                  <div className="mt-4">
-                    <Progress
-                      value={
-                        enrollments.find((e) => e.courseId === course.id)
-                          ?.progress ?? 0
-                      }
-                    />
-                  </div>
-                )}
               </CardContent>
               <CardFooter>
                 {enrolledCourseIds.has(course.id) ? (
