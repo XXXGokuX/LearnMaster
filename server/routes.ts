@@ -19,7 +19,8 @@ const multerStorage = multer.diskStorage({
     cb(null, 'uploads/')
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname))
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, uniqueSuffix + path.extname(file.originalname))
   }
 });
 
@@ -48,28 +49,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).send("Unauthorized");
     }
 
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const courseData = {
-      ...req.body,
-      content: req.body.content ? JSON.parse(req.body.content) : [],
-      thumbnail: files.thumbnail?.[0].path,
-      poster: files.poster?.[0].path,
-      price: parseInt(req.body.price),
-    };
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    const parsed = insertCourseSchema.safeParse(courseData);
-    if (!parsed.success) return res.status(400).json(parsed.error);
+      if (!files.thumbnail?.[0] || !files.poster?.[0]) {
+        return res.status(400).send("Both thumbnail and poster are required");
+      }
 
-    const course = await storage.createCourse(parsed.data);
-    res.status(201).json(course);
-  });
+      const courseData = {
+        ...req.body,
+        content: JSON.parse(req.body.content || '[]'),
+        thumbnail: `/uploads/${files.thumbnail[0].filename}`,
+        poster: `/uploads/${files.poster[0].filename}`,
+        price: parseInt(req.body.price),
+      };
 
-  app.patch("/api/courses/:id", async (req, res) => {
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
-      return res.status(403).send("Unauthorized");
+      const parsed = insertCourseSchema.safeParse(courseData);
+      if (!parsed.success) {
+        return res.status(400).json(parsed.error);
+      }
+
+      const course = await storage.createCourse(parsed.data);
+      res.status(201).json(course);
+    } catch (error) {
+      console.error('Error creating course:', error);
+      res.status(500).send("Failed to create course");
     }
-    const course = await storage.updateCourse(parseInt(req.params.id), req.body);
-    res.json(course);
   });
 
   app.delete("/api/courses/:id", async (req, res) => {

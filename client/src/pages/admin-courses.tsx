@@ -151,12 +151,17 @@ export default function AdminCourses() {
     const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
     const posterInput = document.querySelector<HTMLInputElement>('#poster');
 
-    if (thumbnailInput?.files?.[0]) {
-      formData.append('thumbnail', thumbnailInput.files[0]);
+    if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
+      toast({
+        title: "Missing files",
+        description: "Please upload both a video and a poster image",
+        variant: "destructive",
+      });
+      return;
     }
-    if (posterInput?.files?.[0]) {
-      formData.append('poster', posterInput.files[0]);
-    }
+
+    formData.append('thumbnail', thumbnailInput.files[0]);
+    formData.append('poster', posterInput.files[0]);
 
     createMutation.mutate(formData);
   };
@@ -219,7 +224,7 @@ export default function AdminCourses() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
-                      <Select 
+                      <Select
                         onValueChange={value => form.setValue("category", value)}
                         defaultValue={form.watch("category")}
                       >
@@ -241,7 +246,7 @@ export default function AdminCourses() {
 
                     <div className="space-y-2">
                       <Label htmlFor="level">Level</Label>
-                      <Select 
+                      <Select
                         onValueChange={value => form.setValue("level", value)}
                         defaultValue={form.watch("level")}
                       >
@@ -280,10 +285,10 @@ export default function AdminCourses() {
                     />
                     {videoPreview && (
                       <div className="mt-2 rounded-lg overflow-hidden">
-                        <video 
-                          src={videoPreview} 
-                          controls 
-                          className="w-full max-h-[200px] object-contain bg-black" 
+                        <video
+                          src={videoPreview}
+                          controls
+                          className="w-full max-h-[200px] object-contain bg-black"
                         />
                       </div>
                     )}
@@ -299,10 +304,10 @@ export default function AdminCourses() {
                     />
                     {posterPreview && (
                       <div className="mt-2 rounded-lg overflow-hidden">
-                        <img 
-                          src={posterPreview} 
-                          alt="Course poster preview" 
-                          className="w-full max-h-[200px] object-contain bg-gray-100" 
+                        <img
+                          src={posterPreview}
+                          alt="Course poster preview"
+                          className="w-full max-h-[200px] object-contain bg-gray-100"
                         />
                       </div>
                     )}
