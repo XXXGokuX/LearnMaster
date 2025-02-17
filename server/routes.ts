@@ -176,6 +176,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve uploaded files
   app.use('/uploads', express.static('uploads'));
+  // Add static file serving configuration
+  // Make uploads directory accessible
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    setHeaders: (res, filepath) => {
+      if (filepath.endsWith('.mp4')) {
+        res.set('Content-Type', 'video/mp4');
+      }
+    }
+  }));
 
   const httpServer = createServer(app);
   return httpServer;

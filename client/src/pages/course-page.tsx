@@ -50,7 +50,7 @@ export default function CoursePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
-      
+
       <main className="container mx-auto py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
@@ -74,20 +74,30 @@ export default function CoursePage() {
                         className="p-4 bg-white rounded-lg border"
                       >
                         <h3 className="font-semibold mb-2">{item.title}</h3>
-                        {item.type === "video" && (
-                          <Button
-                            onClick={() =>
-                              progressMutation.mutate(
-                                Math.min(
-                                  100,
-                                  enrollment.progress +
-                                    100 / course.content.length,
-                                ),
-                              )
-                            }
-                          >
-                            Mark as Complete
-                          </Button>
+                        {item.type === "video" && item.url && (
+                          <div className="space-y-4">
+                            <video 
+                              controls 
+                              className="w-full rounded-lg"
+                              src={item.url}
+                              preload="metadata"
+                            >
+                              Your browser does not support the video tag.
+                            </video>
+                            <Button
+                              onClick={() =>
+                                progressMutation.mutate(
+                                  Math.min(
+                                    100,
+                                    enrollment.progress +
+                                      100 / course.content.length,
+                                  ),
+                                )
+                              }
+                            >
+                              Mark as Complete
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
