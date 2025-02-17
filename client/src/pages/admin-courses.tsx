@@ -24,6 +24,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { InsertUser, insertUserSchema } from "@shared/schema";
+import { Progress } from "@/components/ui/progress";
 
 
 const categories = [
@@ -59,6 +60,8 @@ export default function AdminCourses() {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseFormSchema),
@@ -131,11 +134,9 @@ export default function AdminCourses() {
     console.log("Form submitted, validation passed with values:", formValues);
 
     try {
-      // Get file inputs directly from the form
       const thumbnailInput = document.getElementById('thumbnail-upload') as HTMLInputElement;
       const videoInput = document.getElementById('video-upload') as HTMLInputElement;
 
-      // Check for required files
       if (!thumbnailInput?.files?.[0] || !videoInput?.files?.[0]) {
         toast({
           title: "Missing files",
@@ -147,16 +148,13 @@ export default function AdminCourses() {
 
       const formData = new FormData();
 
-      // Add form values
       Object.entries(formValues).forEach(([key, value]) => {
         formData.append(key, value.toString());
       });
 
-      // Add files
       formData.append('thumbnail', thumbnailInput.files[0]);
       formData.append('video', videoInput.files[0]);
 
-      // Add default content with video information
       formData.append('content', JSON.stringify([
         {
           type: "video",
@@ -167,14 +165,58 @@ export default function AdminCourses() {
         }
       ]));
 
-      console.log('Submitting form with files:', {
-        thumbnail: thumbnailInput.files[0],
-        video: videoInput.files[0]
-      });
+      setIsUploading(true);
+      setUploadProgress(0);
 
-      // Submit the form
-      createMutation.mutate(formData);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/courses', true);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(progress);
+        }
+      };
+
+      xhr.onload = () => {
+        setIsUploading(false);
+        if (xhr.status === 201) {
+          const response = JSON.parse(xhr.responseText);
+          queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+          setThumbnailPreview(null);
+          setVideoFile(null);
+          setIsOpen(false);
+          form.reset();
+          toast({
+            title: "Success",
+            description: "Course created successfully",
+          });
+        } else {
+          console.error('Upload failed:', xhr.responseText);
+          toast({
+            title: "Error creating course",
+            description: xhr.responseText || "Failed to create course",
+            variant: "destructive",
+          });
+        }
+      };
+
+      xhr.onerror = () => {
+        setIsUploading(false);
+        console.error('Upload error:', xhr.responseText);
+        toast({
+          title: "Error creating course",
+          description: "Network error occurred while uploading",
+          variant: "destructive",
+        });
+      };
+
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.withCredentials = true;
+
+      xhr.send(formData);
     } catch (error) {
+      setIsUploading(false);
       console.error('Form submission error:', error);
       toast({
         title: "Error",
@@ -205,7 +247,7 @@ export default function AdminCourses() {
     defaultValues: {
       username: "",
       password: "",
-      role: "student" // Admin can only create student users
+      role: "student" 
     }
   });
 
@@ -229,7 +271,6 @@ export default function AdminCourses() {
       });
     },
   });
-
 
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
@@ -397,13 +438,26 @@ export default function AdminCourses() {
                         </p>
                       )}
                     </div>
-
+                    {isUploading && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Uploading course files...</span>
+                          <span>{uploadProgress}%</span>
+                        </div>
+                        <Progress value={uploadProgress} className="w-full" />
+                      </div>
+                    )}
                     <Button
                       type="submit"
                       className="w-full"
-                      disabled={createMutation.isPending}
+                      disabled={isUploading || createMutation.isPending}
                     >
-                      {createMutation.isPending ? (
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading Course...
+                        </>
+                      ) : createMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Creating Course...
