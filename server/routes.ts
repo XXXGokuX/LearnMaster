@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertCourseSchema } from "@shared/schema";
+import { insertCourseSchema, insertEnrollmentSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import express from 'express';
