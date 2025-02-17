@@ -76,14 +76,17 @@ export default function CoursePage() {
                         <h3 className="font-semibold mb-2">{item.title}</h3>
                         {item.type === "video" && item.url && (
                           <div className="space-y-4">
-                            <video 
-                              controls 
-                              className="w-full rounded-lg"
-                              src={item.url}
-                              preload="metadata"
-                            >
-                              Your browser does not support the video tag.
-                            </video>
+                            <div className="aspect-video relative rounded-lg overflow-hidden bg-black">
+                              <video 
+                                controls 
+                                className="absolute inset-0 w-full h-full object-contain"
+                                src={item.url}
+                                preload="metadata"
+                                controlsList="nodownload"
+                              >
+                                Your browser does not support the video tag.
+                              </video>
+                            </div>
                             <Button
                               onClick={() =>
                                 progressMutation.mutate(
