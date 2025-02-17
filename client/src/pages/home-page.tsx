@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Course } from "@shared/schema";
+import { Course, Enrollment } from "@shared/schema";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ export default function HomePage() {
     queryKey: ["/api/courses"],
   });
 
-  const { data: enrollments = [] } = useQuery({
+  const { data: enrollments = [] } = useQuery<Enrollment[]>({
     queryKey: ["/api/enrollments"],
   });
 
@@ -54,6 +54,11 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600">{course.description}</p>
+                <div className="mt-4">
+                  <p className="text-sm"><span className="font-medium">Category:</span> {course.category}</p>
+                  <p className="text-sm"><span className="font-medium">Level:</span> {course.level}</p>
+                  <p className="text-sm"><span className="font-medium">Duration:</span> {course.duration}</p>
+                </div>
               </CardContent>
               <CardFooter>
                 {enrolledCourseIds.has(course.id) ? (
