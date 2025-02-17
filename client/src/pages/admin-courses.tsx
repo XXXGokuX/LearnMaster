@@ -14,7 +14,7 @@ import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Redirect } from "wouter";
@@ -129,7 +129,7 @@ export default function AdminCourses() {
     }
   };
 
-  const handleSubmit = async (formValues: any) => {
+  const handleSubmit = form.handleSubmit(async (formValues) => {
     try {
       console.log("Form submitted with values:", formValues);
       const formData = new FormData();
@@ -190,11 +190,14 @@ export default function AdminCourses() {
         variant: "destructive",
       });
     }
-  };
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/courses/${id}`);
+      await fetch(`/api/courses/${id}`, {
+        method: "DELETE",
+        credentials: 'include'
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
@@ -205,7 +208,7 @@ export default function AdminCourses() {
     },
   });
 
-  console.log("Form state:", form.formState);
+  console.log("Form validation errors:", form.formState.errors);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -226,7 +229,7 @@ export default function AdminCourses() {
 
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(handleSubmit)}
+                  onSubmit={handleSubmit}
                   className="space-y-6 py-4"
                 >
                   <div className="grid gap-6 md:grid-cols-2">
@@ -267,7 +270,7 @@ export default function AdminCourses() {
                       <Label htmlFor="category">Category</Label>
                       <Select
                         onValueChange={value => form.setValue("category", value)}
-                        defaultValue={form.watch("category")}
+                        defaultValue={form.getValues("category")}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -289,7 +292,7 @@ export default function AdminCourses() {
                       <Label htmlFor="level">Level</Label>
                       <Select
                         onValueChange={value => form.setValue("level", value)}
-                        defaultValue={form.watch("level")}
+                        defaultValue={form.getValues("level")}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select level" />
