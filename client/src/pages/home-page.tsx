@@ -19,7 +19,7 @@ export default function HomePage() {
   });
 
   const { data: enrollments = [], isLoading: isLoadingEnrollments } = useQuery<Enrollment[]>({
-    queryKey: ["/api/enrollments"],
+    queryKey: ["/api/enrollments", user?.id], // Make query key user-specific
     enabled: !!user, // Only fetch enrollments if user is logged in
   });
 
@@ -28,7 +28,8 @@ export default function HomePage() {
       await apiRequest("POST", "/api/enroll", { courseId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
+      // Invalidate enrollments for the specific user
+      queryClient.invalidateQueries({ queryKey: ["/api/enrollments", user?.id] });
       toast({
         title: "Enrolled successfully",
         description: "You can now start learning!",

@@ -73,8 +73,6 @@ export class DatabaseStorage implements IStorage {
       level: courseData.level,
       duration: courseData.duration,
       thumbnail: courseData.thumbnail,
-      poster: courseData.poster,
-      price: courseData.price,
       content: courseData.content,
     }).returning();
     return course;
