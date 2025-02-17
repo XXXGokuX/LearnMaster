@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertCourseSchema, insertEnrollmentSchema } from "@shared/schema";
+import { insertCourseSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import express from 'express';
@@ -54,7 +54,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/courses", upload.fields([
     { name: 'thumbnail', maxCount: 1 },
-    { name: 'poster', maxCount: 1 },
     { name: 'video', maxCount: 1 }
   ]), async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
@@ -67,8 +66,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-      if (!files.thumbnail?.[0] || !files.poster?.[0] || !files.video?.[0]) {
-        return res.status(400).send("Thumbnail, poster, and video files are required");
+      if (!files.thumbnail?.[0] || !files.video?.[0]) {
+        return res.status(400).send("Thumbnail and video files are required");
       }
 
       // Ensure uploads directory exists
@@ -85,9 +84,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         level: req.body.level,
         duration: req.body.duration,
         thumbnail: `/uploads/${files.thumbnail[0].filename}`,
-        poster: `/uploads/${files.poster[0].filename}`,
-        video: `/uploads/videos/${files.video[0].filename}`, // Added video path
-        price: parseInt(req.body.price),
         content: JSON.parse(req.body.content)
       };
 

@@ -17,8 +17,6 @@ export const courses = pgTable("courses", {
   level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull().default("beginner"),
   duration: text("duration").notNull().default("TBD"),
   thumbnail: text("thumbnail").notNull(),
-  poster: text("poster").notNull().default("default-poster.jpg"),
-  price: integer("price").notNull(),
   content: json("content").$type<{
     type: "video" | "document" | "quiz";
     title: string;
@@ -52,8 +50,6 @@ export const insertCourseSchema = createInsertSchema(courses).pick({
   level: true,
   duration: true,
   thumbnail: true,
-  poster: true,
-  price: true,
   content: true,
 });
 

@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Course, insertCourseSchema } from "@shared/schema";
+import { Course } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,7 +47,6 @@ const courseFormSchema = z.object({
   category: z.string().min(1, "Category is required"),
   level: z.string().min(1, "Level is required"),
   duration: z.string().min(1, "Duration is required"),
-  price: z.number().min(0, "Price must be positive"),
 });
 
 type CourseFormData = z.infer<typeof courseFormSchema>;
@@ -55,7 +54,6 @@ type CourseFormData = z.infer<typeof courseFormSchema>;
 export default function AdminCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [posterPreview, setPosterPreview] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -68,7 +66,6 @@ export default function AdminCourses() {
       category: "Other",
       level: "beginner",
       duration: "",
-      price: 0,
     },
   });
 
@@ -94,7 +91,6 @@ export default function AdminCourses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
-      setPosterPreview(null);
       setThumbnailPreview(null);
       setVideoFile(null);
       setIsOpen(false);
@@ -114,20 +110,16 @@ export default function AdminCourses() {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'poster' | 'video') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'video') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (type === 'video') {
       setVideoFile(file);
-    } else {
+    } else if (type === 'thumbnail') {
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (type === 'poster') {
-          setPosterPreview(reader.result as string);
-        } else if (type === 'thumbnail') {
-          setThumbnailPreview(reader.result as string);
-        }
+        setThumbnailPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -139,14 +131,13 @@ export default function AdminCourses() {
     try {
       // Get file inputs directly from the form
       const thumbnailInput = document.getElementById('thumbnail-upload') as HTMLInputElement;
-      const posterInput = document.getElementById('poster-upload') as HTMLInputElement;
       const videoInput = document.getElementById('video-upload') as HTMLInputElement;
 
       // Check for required files
-      if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0] || !videoInput?.files?.[0]) {
+      if (!thumbnailInput?.files?.[0] || !videoInput?.files?.[0]) {
         toast({
           title: "Missing files",
-          description: "Please upload thumbnail, poster, and video files",
+          description: "Please upload thumbnail and video files",
           variant: "destructive",
         });
         return;
@@ -161,7 +152,6 @@ export default function AdminCourses() {
 
       // Add files
       formData.append('thumbnail', thumbnailInput.files[0]);
-      formData.append('poster', posterInput.files[0]);
       formData.append('video', videoInput.files[0]);
 
       // Add default content with video information
@@ -171,13 +161,12 @@ export default function AdminCourses() {
           title: formValues.title,
           description: "Course introduction video",
           url: `/uploads/videos/${videoInput.files[0].name}`,
-          duration: "TBD", // This will be calculated on the server
+          duration: "TBD",
         }
       ]));
 
       console.log('Submitting form with files:', {
         thumbnail: thumbnailInput.files[0],
-        poster: posterInput.files[0],
         video: videoInput.files[0]
       });
 
@@ -235,26 +224,12 @@ export default function AdminCourses() {
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6 py-4"
                 >
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Course Title</Label>
-                      <Input id="title" {...form.register("title")} />
-                      {form.formState.errors.title && (
-                        <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="price">Price (in cents)</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        {...form.register("price", { valueAsNumber: true })}
-                      />
-                      {form.formState.errors.price && (
-                        <p className="text-sm text-red-500">{form.formState.errors.price.message}</p>
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Course Title</Label>
+                    <Input id="title" {...form.register("title")} />
+                    {form.formState.errors.title && (
+                      <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -342,25 +317,6 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="poster-upload">Course Poster</Label>
-                    <Input
-                      id="poster-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'poster')}
-                    />
-                    {posterPreview && (
-                      <div className="mt-2 rounded-lg overflow-hidden">
-                        <img
-                          src={posterPreview}
-                          alt="Course poster preview"
-                          className="w-full max-h-[200px] object-contain bg-gray-100"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="video-upload">Course Video</Label>
                     <Input
                       id="video-upload"
@@ -410,8 +366,7 @@ export default function AdminCourses() {
                 <p><span className="font-semibold">Level:</span> {course.level}</p>
                 <p><span className="font-semibold">Duration:</span> {course.duration}</p>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="font-semibold">${course.price / 100}</p>
+              <div className="flex justify-end">
                 <Button
                   variant="destructive"
                   onClick={() => {
