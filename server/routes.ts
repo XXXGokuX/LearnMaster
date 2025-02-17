@@ -10,7 +10,7 @@ import fs from 'fs';
 
 // Create uploads directory if it doesn't exist
 if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
+  fs.mkdirSync('uploads', { recursive: true });
 }
 
 // Configure multer for file uploads
@@ -50,33 +50,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      console.log('Received request body:', req.body);
+      console.log('Received files:', req.files);
+
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
       if (!files.thumbnail?.[0] || !files.poster?.[0]) {
-        return res.status(400).send("Both thumbnail and poster are required");
+        return res.status(400).send("Both thumbnail and poster files are required");
       }
 
+      // Ensure uploads directory exists (already handled above)
+
+
       const courseData = {
-        ...req.body,
-        content: JSON.parse(req.body.content || '[]'),
+        title: req.body.title,
+        description: req.body.description,
+        category: req.body.category,
+        level: req.body.level,
+        duration: req.body.duration,
         thumbnail: `/uploads/${files.thumbnail[0].filename}`,
         poster: `/uploads/${files.poster[0].filename}`,
         price: parseInt(req.body.price),
+        content: JSON.parse(req.body.content)
       };
 
-      console.log('Received course data:', courseData);
+      console.log('Processed course data:', courseData);
 
       const parsed = insertCourseSchema.safeParse(courseData);
       if (!parsed.success) {
         console.error('Validation error:', parsed.error);
-        return res.status(400).json(parsed.error);
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: parsed.error.errors 
+        });
       }
 
       const course = await storage.createCourse(parsed.data);
+      console.log('Created course:', course);
       res.status(201).json(course);
     } catch (error) {
       console.error('Error creating course:', error);
-      res.status(500).send("Failed to create course");
+      res.status(500).json({ 
+        error: "Failed to create course", 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 

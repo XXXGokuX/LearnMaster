@@ -138,35 +138,45 @@ export default function AdminCourses() {
     const formData = new FormData();
 
     // Add basic course data
-    Object.keys(data).forEach(key => {
-      if (key === 'content') {
-        formData.append(key, JSON.stringify([
-          {
-            type: "video",
-            title: "Introduction",
-            description: "Welcome to the course",
-          }
-        ]));
-      } else if (key !== 'thumbnail' && key !== 'poster') {
-        formData.append(key, data[key].toString());
-      }
-    });
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('category', data.category);
+    formData.append('level', data.level);
+    formData.append('duration', data.duration);
+    formData.append('price', data.price.toString());
 
-    // Add files
+    // Add default content
+    formData.append('content', JSON.stringify([
+      {
+        type: "video",
+        title: "Introduction",
+        description: "Welcome to the course",
+      }
+    ]));
+
+    // Get file inputs
     const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
     const posterInput = document.querySelector<HTMLInputElement>('#poster');
 
+    // Validate files
     if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
       toast({
         title: "Missing files",
-        description: "Please upload both a video and a poster image",
+        description: "Please upload both a video thumbnail and a poster image",
         variant: "destructive",
       });
       return;
     }
 
+    // Add files
     formData.append('thumbnail', thumbnailInput.files[0]);
     formData.append('poster', posterInput.files[0]);
+
+    // Log formData contents for debugging
+    console.log('FormData contents:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
 
     createMutation.mutate(formData);
   };
