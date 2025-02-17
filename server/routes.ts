@@ -150,19 +150,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enrollment routes
   app.post("/api/enroll", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-    const parsed = insertEnrollmentSchema.safeParse({
-      ...req.body,
-      userId: req.user.id,
-    });
-    if (!parsed.success) return res.status(400).json(parsed.error);
-    const enrollment = await storage.createEnrollment(parsed.data);
-    res.status(201).json(enrollment);
+
+    try {
+      // Ensure courseId is provided
+      if (!req.body.courseId) {
+        return res.status(400).send("Course ID is required");
+      }
+
+      // Check if course exists
+      const course = await storage.getCourse(req.body.courseId);
+      if (!course) {
+        return res.status(404).send("Course not found");
+      }
+
+      // Check if user is already enrolled
+      const existingEnrollment = await storage.getEnrollment(req.user.id, req.body.courseId);
+      if (existingEnrollment) {
+        return res.status(400).send("Already enrolled in this course");
+      }
+
+      const parsed = insertEnrollmentSchema.safeParse({
+        userId: req.user.id,
+        courseId: req.body.courseId,
+      });
+
+      if (!parsed.success) {
+        return res.status(400).json(parsed.error);
+      }
+
+      const enrollment = await storage.createEnrollment(parsed.data);
+      console.log(`User ${req.user.id} enrolled in course ${req.body.courseId}`);
+      res.status(201).json(enrollment);
+    } catch (error) {
+      console.error('Enrollment error:', error);
+      res.status(500).send("Failed to enroll in course");
+    }
   });
 
   app.get("/api/enrollments", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-    const enrollments = await storage.getEnrollments(req.user.id);
-    res.json(enrollments);
+
+    try {
+      // Get enrollments specific to the logged-in user
+      const enrollments = await storage.getEnrollments(req.user.id);
+      console.log(`Fetched ${enrollments.length} enrollments for user ${req.user.id}`);
+      res.json(enrollments);
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+      res.status(500).send("Failed to fetch enrollments");
+    }
   });
 
   app.post("/api/progress", async (req, res) => {

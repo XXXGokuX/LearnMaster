@@ -8,17 +8,19 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
+import { Loader2 } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: courses } = useQuery<Course[]>({
+  const { data: courses, isLoading: isLoadingCourses } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
 
-  const { data: enrollments = [] } = useQuery<Enrollment[]>({
+  const { data: enrollments = [], isLoading: isLoadingEnrollments } = useQuery<Enrollment[]>({
     queryKey: ["/api/enrollments"],
+    enabled: !!user, // Only fetch enrollments if user is logged in
   });
 
   const enrollMutation = useMutation({
@@ -32,9 +34,28 @@ export default function HomePage() {
         description: "You can now start learning!",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to enroll",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
+  // Create a Set of enrolled course IDs for efficient lookup
   const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
+
+  if (isLoadingCourses || isLoadingEnrollments) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardNav />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,7 +75,7 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600">{course.description}</p>
-                <div className="mt-4">
+                <div className="mt-4 space-y-1">
                   <p className="text-sm"><span className="font-medium">Category:</span> {course.category}</p>
                   <p className="text-sm"><span className="font-medium">Level:</span> {course.level}</p>
                   <p className="text-sm"><span className="font-medium">Duration:</span> {course.duration}</p>
@@ -71,7 +92,14 @@ export default function HomePage() {
                     onClick={() => enrollMutation.mutate(course.id)}
                     disabled={enrollMutation.isPending}
                   >
-                    Enroll Now
+                    {enrollMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enrolling...
+                      </>
+                    ) : (
+                      "Enroll Now"
+                    )}
                   </Button>
                 )}
               </CardFooter>
