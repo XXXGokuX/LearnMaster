@@ -129,9 +129,10 @@ export default function AdminCourses() {
     }
   };
 
-  const handleSubmit = form.handleSubmit(async (formValues) => {
+  const onSubmit = async (formValues: z.infer<typeof createCourseSchema>) => {
+    console.log("Form submitted, validation passed with values:", formValues);
+
     try {
-      console.log("Form submitted with values:", formValues);
       const formData = new FormData();
 
       // Add basic course data
@@ -190,7 +191,7 @@ export default function AdminCourses() {
         variant: "destructive",
       });
     }
-  });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -207,8 +208,6 @@ export default function AdminCourses() {
       });
     },
   });
-
-  console.log("Form validation errors:", form.formState.errors);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -229,7 +228,7 @@ export default function AdminCourses() {
 
               <Form {...form}>
                 <form
-                  onSubmit={handleSubmit}
+                  onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6 py-4"
                 >
                   <div className="grid gap-6 md:grid-cols-2">
@@ -361,6 +360,11 @@ export default function AdminCourses() {
                     type="submit"
                     className="w-full"
                     disabled={createMutation.isPending}
+                    onClick={() => {
+                      console.log('Submit button clicked');
+                      console.log('Current form values:', form.getValues());
+                      console.log('Form errors:', form.formState.errors);
+                    }}
                   >
                     {createMutation.isPending ? (
                       <>
