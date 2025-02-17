@@ -83,6 +83,7 @@ export default function AdminCourses() {
       const response = await fetch("/api/courses", {
         method: "POST",
         body: formData,
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -128,18 +129,18 @@ export default function AdminCourses() {
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (formValues: any) => {
     try {
-      console.log("Form submitted with data:", data);
+      console.log("Form submitted with values:", formValues);
       const formData = new FormData();
 
       // Add basic course data
-      formData.append('title', data.title);
-      formData.append('description', data.description);
-      formData.append('category', data.category);
-      formData.append('level', data.level);
-      formData.append('duration', data.duration);
-      formData.append('price', data.price.toString());
+      formData.append('title', formValues.title);
+      formData.append('description', formValues.description);
+      formData.append('category', formValues.category);
+      formData.append('level', formValues.level);
+      formData.append('duration', formValues.duration);
+      formData.append('price', formValues.price.toString());
 
       // Add default content
       formData.append('content', JSON.stringify([
@@ -153,6 +154,10 @@ export default function AdminCourses() {
       // Get file inputs
       const thumbnailInput = document.querySelector<HTMLInputElement>('#video');
       const posterInput = document.querySelector<HTMLInputElement>('#poster');
+
+      // Log file inputs
+      console.log('Thumbnail input:', thumbnailInput?.files);
+      console.log('Poster input:', posterInput?.files);
 
       // Validate files
       if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0]) {
@@ -174,6 +179,8 @@ export default function AdminCourses() {
         console.log(`${key}:`, value);
       });
 
+      // Trigger mutation
+      console.log('Triggering createMutation...');
       createMutation.mutate(formData);
     } catch (error) {
       console.error('Form submission error:', error);
