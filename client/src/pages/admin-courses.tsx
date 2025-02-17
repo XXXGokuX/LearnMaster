@@ -131,7 +131,6 @@ export default function AdminCourses() {
         }
       };
       reader.readAsDataURL(file);
-      form.setValue(type === 'poster' ? 'poster' : 'thumbnail', file.name);
     }
   };
 
