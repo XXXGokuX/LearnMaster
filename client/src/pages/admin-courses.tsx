@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { z } from "zod";
+import { Loader2 } from "lucide-react";
 
 const categories = [
   "Web Development",
@@ -73,17 +74,12 @@ export default function AdminCourses() {
       level: "beginner",
       duration: "",
       price: 0,
-      content: [
-        {
-          type: "video",
-          title: "Introduction",
-        },
-      ],
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      console.log("Submitting form data...");
       const response = await apiRequest("POST", "/api/courses", data);
       if (!response.ok) {
         const error = await response.json();
@@ -98,8 +94,8 @@ export default function AdminCourses() {
       setIsOpen(false);
       form.reset();
       toast({
-        title: "Course created",
-        description: "The course has been created successfully.",
+        title: "Success",
+        description: "Course created successfully",
       });
     },
     onError: (error: Error) => {
@@ -108,19 +104,6 @@ export default function AdminCourses() {
         title: "Error creating course",
         description: error.message,
         variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/courses/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
-      toast({
-        title: "Course deleted",
-        description: "The course has been deleted successfully.",
       });
     },
   });
@@ -140,8 +123,9 @@ export default function AdminCourses() {
     }
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     try {
+      console.log("Form submitted with data:", data);
       const formData = new FormData();
 
       // Add basic course data
@@ -185,7 +169,7 @@ export default function AdminCourses() {
         console.log(`${key}:`, value);
       });
 
-      createMutation.mutate(formData);
+      await createMutation.mutateAsync(formData);
     } catch (error) {
       console.error('Form submission error:', error);
       toast({
@@ -195,6 +179,19 @@ export default function AdminCourses() {
       });
     }
   };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/courses/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({
+        title: "Course deleted",
+        description: "The course has been deleted successfully.",
+      });
+    },
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -348,7 +345,14 @@ export default function AdminCourses() {
                     className="w-full"
                     disabled={createMutation.isPending}
                   >
-                    Create Course
+                    {createMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Course...
+                      </>
+                    ) : (
+                      "Create Course"
+                    )}
                   </Button>
                 </form>
               </Form>
