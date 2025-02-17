@@ -57,14 +57,6 @@ export default function AdminCourses() {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
-  const { data: courses } = useQuery<Course[]>({
-    queryKey: ["/api/courses"],
-  });
-
   const form = useForm({
     resolver: zodResolver(createCourseSchema),
     defaultValues: {
@@ -75,6 +67,14 @@ export default function AdminCourses() {
       duration: "",
       price: 0,
     },
+  });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
+
+  const { data: courses } = useQuery<Course[]>({
+    queryKey: ["/api/courses"],
   });
 
   const createMutation = useMutation({
@@ -129,7 +129,7 @@ export default function AdminCourses() {
     }
   };
 
-  const onSubmit = async (formValues: any) => {
+  const handleSubmit = async (formValues: any) => {
     try {
       console.log("Form submitted with values:", formValues);
       const formData = new FormData();
@@ -205,6 +205,8 @@ export default function AdminCourses() {
     },
   });
 
+  console.log("Form state:", form.formState);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
@@ -224,11 +226,7 @@ export default function AdminCourses() {
 
               <Form {...form}>
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    console.log("Form submitted, calling handleSubmit");
-                    form.handleSubmit(onSubmit)(e);
-                  }}
+                  onSubmit={form.handleSubmit(handleSubmit)}
                   className="space-y-6 py-4"
                 >
                   <div className="grid gap-6 md:grid-cols-2">
