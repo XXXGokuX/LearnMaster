@@ -140,7 +140,13 @@ export default function AdminCourses() {
     // Add basic course data
     Object.keys(data).forEach(key => {
       if (key === 'content') {
-        formData.append(key, JSON.stringify(data[key]));
+        formData.append(key, JSON.stringify([
+          {
+            type: "video",
+            title: "Introduction",
+            description: "Welcome to the course",
+          }
+        ]));
       } else if (key !== 'thumbnail' && key !== 'poster') {
         formData.append(key, data[key].toString());
       }

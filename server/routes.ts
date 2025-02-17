@@ -20,7 +20,7 @@ const multerStorage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, uniqueSuffix + path.extname(file.originalname))
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
   }
 });
 
@@ -64,8 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         price: parseInt(req.body.price),
       };
 
+      console.log('Received course data:', courseData);
+
       const parsed = insertCourseSchema.safeParse(courseData);
       if (!parsed.success) {
+        console.error('Validation error:', parsed.error);
         return res.status(400).json(parsed.error);
       }
 
