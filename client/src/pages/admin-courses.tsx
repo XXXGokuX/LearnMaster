@@ -224,7 +224,11 @@ export default function AdminCourses() {
 
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(onSubmit)}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    console.log("Form submitted, calling handleSubmit");
+                    form.handleSubmit(onSubmit)(e);
+                  }}
                   className="space-y-6 py-4"
                 >
                   <div className="grid gap-6 md:grid-cols-2">
