@@ -7,8 +7,7 @@ import multer from "multer";
 import path from "path";
 import express from 'express';
 import fs from 'fs';
-import { hashPassword } from './auth'; // Assuming hashPassword function exists
-
+import { hashPassword } from './auth';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -101,13 +100,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Thumbnail and video files are required");
       }
 
-      // Ensure uploads directory exists (This is redundant as it's already done in multerStorage)
-      // ['uploads', 'uploads/videos'].forEach(dir => {
-      //   if (!fs.existsSync(dir)) {
-      //     fs.mkdirSync(dir, { recursive: true });
-      //   }
-      // });
-
       const courseData = {
         title: req.body.title,
         description: req.body.description,
@@ -115,7 +107,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         level: req.body.level,
         duration: req.body.duration,
         thumbnail: `/uploads/${files.thumbnail[0].filename}`,
-        content: JSON.parse(req.body.content)
+        content: JSON.stringify([{
+          type: "video",
+          title: req.body.title,
+          description: "Course introduction video",
+          url: `/uploads/videos/${files.video[0].filename}`,
+          duration: "TBD",
+        }])
       };
 
       console.log('Processed course data:', courseData);
@@ -174,7 +172,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
-  // Serve uploaded files
   // Make uploads directory accessible
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
     setHeaders: (res, filepath) => {
