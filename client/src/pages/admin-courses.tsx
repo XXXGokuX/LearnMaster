@@ -72,10 +72,6 @@ export default function AdminCourses() {
     },
   });
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: courses } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
@@ -120,42 +116,42 @@ export default function AdminCourses() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'poster' | 'video') => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (type === 'video') {
-        setVideoFile(file);
-      } else {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (type === 'poster') {
-            setPosterPreview(reader.result as string);
-          } else {
-            setThumbnailPreview(reader.result as string);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
+    if (!file) return;
+
+    if (type === 'video') {
+      setVideoFile(file);
+    } else {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === 'poster') {
+          setPosterPreview(reader.result as string);
+        } else if (type === 'thumbnail') {
+          setThumbnailPreview(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const onSubmit = async (formValues: CourseFormData) => {
     console.log("Form submitted, validation passed with values:", formValues);
 
-    // Get file inputs
-    const thumbnailInput = document.querySelector<HTMLInputElement>('#thumbnail');
-    const posterInput = document.querySelector<HTMLInputElement>('#poster');
-    const videoInput = document.querySelector<HTMLInputElement>('#video');
-
-    // Check for required files
-    if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0] || !videoInput?.files?.[0]) {
-      toast({
-        title: "Missing files",
-        description: "Please upload thumbnail, poster, and video files",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
+      // Get file inputs directly from the form
+      const thumbnailInput = document.getElementById('thumbnail-upload') as HTMLInputElement;
+      const posterInput = document.getElementById('poster-upload') as HTMLInputElement;
+      const videoInput = document.getElementById('video-upload') as HTMLInputElement;
+
+      // Check for required files
+      if (!thumbnailInput?.files?.[0] || !posterInput?.files?.[0] || !videoInput?.files?.[0]) {
+        toast({
+          title: "Missing files",
+          description: "Please upload thumbnail, poster, and video files",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const formData = new FormData();
 
       // Add form values
@@ -164,9 +160,9 @@ export default function AdminCourses() {
       });
 
       // Add files
-      formData.append('thumbnail', thumbnailInput?.files[0]);
-      formData.append('poster', posterInput?.files[0]);
-      formData.append('video', videoInput?.files[0]);
+      formData.append('thumbnail', thumbnailInput.files[0]);
+      formData.append('poster', posterInput.files[0]);
+      formData.append('video', videoInput.files[0]);
 
       // Add default content with video information
       formData.append('content', JSON.stringify([
@@ -174,15 +170,15 @@ export default function AdminCourses() {
           type: "video",
           title: formValues.title,
           description: "Course introduction video",
-          url: `/uploads/videos/${videoInput?.files[0].name}`,
+          url: `/uploads/videos/${videoInput.files[0].name}`,
           duration: "TBD", // This will be calculated on the server
         }
       ]));
 
       console.log('Submitting form with files:', {
-        thumbnail: thumbnailInput?.files[0],
-        poster: posterInput?.files[0],
-        video: videoInput?.files[0]
+        thumbnail: thumbnailInput.files[0],
+        poster: posterInput.files[0],
+        video: videoInput.files[0]
       });
 
       // Submit the form
@@ -212,6 +208,10 @@ export default function AdminCourses() {
       });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -323,9 +323,9 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="thumbnail">Course Thumbnail</Label>
+                    <Label htmlFor="thumbnail-upload">Course Thumbnail</Label>
                     <Input
-                      id="thumbnail"
+                      id="thumbnail-upload"
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleFileChange(e, 'thumbnail')}
@@ -342,9 +342,9 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="poster">Course Poster</Label>
+                    <Label htmlFor="poster-upload">Course Poster</Label>
                     <Input
-                      id="poster"
+                      id="poster-upload"
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleFileChange(e, 'poster')}
@@ -361,9 +361,9 @@ export default function AdminCourses() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="video">Course Video</Label>
+                    <Label htmlFor="video-upload">Course Video</Label>
                     <Input
-                      id="video"
+                      id="video-upload"
                       type="file"
                       accept="video/*"
                       onChange={(e) => handleFileChange(e, 'video')}
