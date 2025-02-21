@@ -8,9 +8,9 @@ import { useRoute, Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, CheckCircle2, Play } from "lucide-react";
+import { Loader2, CheckCircle2, Play, AlertTriangle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
 
 export default function CoursePage() {
@@ -32,6 +32,13 @@ export default function CoursePage() {
   });
 
   const enrollment = enrollments?.find((e) => e.courseId === courseId);
+
+  // Reset activeVideoIndex when course changes or if it's out of bounds
+  useEffect(() => {
+    if (course && (!course.content || activeVideoIndex >= course.content.length)) {
+      setActiveVideoIndex(0);
+    }
+  }, [course, activeVideoIndex]);
 
   const progressMutation = useMutation({
     mutationFn: async (progress: number) => {
@@ -71,12 +78,29 @@ export default function CoursePage() {
     return <Redirect to="/" />;
   }
 
+  if (!course.content || course.content.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="container mx-auto py-24">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <AlertTriangle className="h-12 w-12 text-yellow-500" />
+            <h1 className="text-2xl font-bold">No Content Available</h1>
+            <p className="text-muted-foreground">This course doesn't have any content yet.</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const calculateLectureProgress = (index: number) => {
     const lectureIncrement = 100 / course.content.length;
     const currentProgress = enrollment.progress;
     const lectureProgress = Math.min(100, Math.max(0, currentProgress - (index * lectureIncrement)));
     return lectureProgress >= lectureIncrement;
   };
+
+  const currentLecture = course.content[activeVideoIndex];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,25 +162,31 @@ export default function CoursePage() {
 
                   <TabsContent value="video">
                     <div className="space-y-4">
-                      <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                        <video
-                          key={course.content[activeVideoIndex].url}
-                          controls
-                          className="w-full h-full"
-                          src={course.content[activeVideoIndex].url}
-                          preload="metadata"
-                          controlsList="nodownload"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
+                      {currentLecture.url ? (
+                        <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                          <video
+                            key={currentLecture.url}
+                            controls
+                            className="w-full h-full"
+                            src={currentLecture.url}
+                            preload="metadata"
+                            controlsList="nodownload"
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                        </div>
+                      ) : (
+                        <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                          <p className="text-muted-foreground">No video available for this lecture</p>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <h3 className="text-xl font-semibold">
-                          {course.content[activeVideoIndex].title}
+                          {currentLecture.title}
                         </h3>
                         <p className="text-muted-foreground">
-                          {course.content[activeVideoIndex].description}
+                          {currentLecture.description}
                         </p>
                       </div>
 
