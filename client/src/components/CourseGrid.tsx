@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users } from "lucide-react";
+import { motion } from "framer-motion";
 
 const categories = ["All", "Programming", "Design", "Business", "Marketing", "Other"];
 
@@ -25,7 +26,14 @@ export function CourseGrid() {
 
   return (
     <section className="py-16 container mx-auto px-4">
-      <h2 className="text-3xl font-bold text-center mb-8">Explore Our Courses</h2>
+      <motion.h2 
+        className="text-3xl font-bold text-center mb-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        Explore Our Courses
+      </motion.h2>
       <Tabs defaultValue="All" className="w-full">
         <TabsList className="flex justify-center mb-8">
           {categories.map((category) => (
@@ -54,36 +62,43 @@ export function CourseGrid() {
               ) : (
                 courses
                   ?.filter((course) => category === "All" || course.category === category)
-                  .map((course) => (
-                    <Card key={course.id} className="group hover:shadow-lg transition-shadow">
-                      <CardHeader className="p-0">
-                        <div 
-                          className="h-48 bg-cover bg-center rounded-t-lg"
-                          style={{ backgroundImage: `url(${getCourseImage(course.category)})` }}
-                        />
-                      </CardHeader>
-                      <CardContent className="p-6">
-                        <Badge className="mb-2" variant="secondary">
-                          {course.category}
-                        </Badge>
-                        <CardTitle className="mb-2 group-hover:text-primary transition-colors">
-                          {course.title}
-                        </CardTitle>
-                        <p className="text-muted-foreground line-clamp-2 mb-4">
-                          {course.description}
-                        </p>
-                      </CardContent>
-                      <CardFooter className="px-6 pb-6 pt-0 flex justify-between text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{course.duration}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span className="capitalize">{course.level}</span>
-                        </div>
-                      </CardFooter>
-                    </Card>
+                  .map((course, index) => (
+                    <motion.div
+                      key={course.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                    >
+                      <Card className="group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                        <CardHeader className="p-0 overflow-hidden">
+                          <div 
+                            className="h-48 bg-cover bg-center rounded-t-lg transform transition-transform duration-300 group-hover:scale-105"
+                            style={{ backgroundImage: `url(${course.thumbnail || getCourseImage(course.category)})` }}
+                          />
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <Badge className="mb-2" variant="secondary">
+                            {course.category}
+                          </Badge>
+                          <CardTitle className="mb-2 group-hover:text-primary transition-colors duration-300">
+                            {course.title}
+                          </CardTitle>
+                          <p className="text-muted-foreground line-clamp-2 mb-4">
+                            {course.description}
+                          </p>
+                        </CardContent>
+                        <CardFooter className="px-6 pb-6 pt-0 flex justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>{course.duration}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span className="capitalize">{course.level}</span>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
                   ))
               )}
             </div>

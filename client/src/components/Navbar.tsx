@@ -1,9 +1,13 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Navbar() {
+  const { user, logoutMutation } = useAuth();
+  const [, navigate] = useLocation();
+
   return (
     <nav className="fixed top-0 w-full bg-white border-b z-50">
       <div className="container mx-auto px-4 py-3">
@@ -27,8 +31,31 @@ export function Navbar() {
 
           {/* Auth Buttons */}
           <div className="flex items-center space-x-4">
-            <Button variant="ghost">Log in</Button>
-            <Button>Sign up</Button>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  Welcome, {user.username}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    logoutMutation.mutate();
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => navigate("/auth")}>
+                  Log in
+                </Button>
+                <Button onClick={() => navigate("/auth?tab=register")}>
+                  Sign up
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
