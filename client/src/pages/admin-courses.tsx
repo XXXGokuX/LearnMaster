@@ -251,6 +251,11 @@ export default function AdminCourses() {
     },
   });
 
+  const { data: courses } = useQuery({
+    queryKey: ["/api/courses"],
+    queryFn: () => apiRequest("GET", "/api/courses").then(res => res.json())
+  })
+
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
   }
@@ -521,8 +526,7 @@ export default function AdminCourses() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/*This part of the code is commented out because it is not included in either the original or edited files.  It should be reinstated from a separate source if it is required.*/}
-          {/*{courses?.map((course) => (
+          {courses?.map((course) => (
             <div key={course.id} className="bg-white rounded-lg shadow-sm p-6">
               <img
                 src={course.thumbnail}
@@ -535,6 +539,7 @@ export default function AdminCourses() {
                 <p><span className="font-semibold">Category:</span> {course.category}</p>
                 <p><span className="font-semibold">Level:</span> {course.level}</p>
                 <p><span className="font-semibold">Duration:</span> {course.duration}</p>
+                <p><span className="font-semibold">Lectures:</span> {course.lectures.length}</p>
               </div>
               <div className="flex justify-end">
                 <Button
@@ -546,11 +551,15 @@ export default function AdminCourses() {
                   }}
                   disabled={deleteMutation.isPending}
                 >
-                  Delete
+                  {deleteMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    "Delete Course"
+                  )}
                 </Button>
               </div>
             </div>
-          ))}*/}
+          ))}
         </div>
       </main>
     </div>

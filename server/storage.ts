@@ -23,7 +23,7 @@ export interface IStorage {
   getEnrollments(userId: number): Promise<Enrollment[]>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateProgress(userId: number, courseId: number, progress: number): Promise<void>;
-  getAllEnrollments(): Promise<Enrollment[]>; // Added here
+  getAllEnrollments(): Promise<Enrollment[]>;
 
   sessionStore: session.Store;
 }
@@ -67,15 +67,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCourse(courseData: InsertCourse): Promise<Course> {
-    const [course] = await db.insert(courses).values({
-      title: courseData.title,
-      description: courseData.description,
-      category: courseData.category,
-      level: courseData.level,
-      duration: courseData.duration,
-      thumbnail: courseData.thumbnail,
-      content: courseData.content,
-    }).returning();
+    const [course] = await db.insert(courses).values(courseData).returning();
     return course;
   }
 
@@ -142,7 +134,7 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async getAllEnrollments(): Promise<Enrollment[]> { // Added here
+  async getAllEnrollments(): Promise<Enrollment[]> {
     return await db.select().from(enrollments);
   }
 }
