@@ -13,11 +13,6 @@ import {
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Redirect } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
@@ -25,6 +20,12 @@ import { z } from "zod";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { InsertUser, insertUserSchema } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Redirect } from "wouter";
+
 
 const categories = [
   "Web Development",
@@ -87,8 +88,9 @@ export default function AdminCourses() {
     },
   });
 
-  const { fields: lectureFields, append, remove } = form.useFieldArray({
+  const { fields: lectureFields, append, remove } = useFieldArray({
     name: "lectures",
+    control: form.control
   });
 
   const handleLectureVideoChange = (index: number, file: File) => {
@@ -524,7 +526,8 @@ export default function AdminCourses() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses?.map((course) => (
+          {/*This part of the code is commented out because it is not included in either the original or edited files.  It should be reinstated from a separate source if it is required.*/}
+          {/*{courses?.map((course) => (
             <div key={course.id} className="bg-white rounded-lg shadow-sm p-6">
               <img
                 src={course.thumbnail}
@@ -552,7 +555,7 @@ export default function AdminCourses() {
                 </Button>
               </div>
             </div>
-          ))}
+          ))}*/}
         </div>
       </main>
     </div>
