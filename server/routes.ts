@@ -91,17 +91,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Process lectures array from form data
         const lectures = [];
-        for (let i = 0; i < 5; i++) {
-          const titleKey = `lectures[${i}][title]`;
-          const descriptionKey = `lectures[${i}][description]`;
+
+        // Parse lectures array from form data
+        const lecturesData = req.body.lectures || [];
+        console.log("Lectures data from form:", lecturesData);
+
+        // Ensure lecturesData is an array
+        const lecturesArray = Array.isArray(lecturesData) ? lecturesData : JSON.parse(lecturesData);
+
+        for (let i = 0; i < lecturesArray.length; i++) {
+          const lecture = lecturesArray[i];
           const lectureFile = files[`lecture_${i}`]?.[0];
 
-          // Only add lecture if both title and file exist
-          if (req.body[titleKey] && lectureFile) {
+          if (lecture.title && lectureFile) {
             lectures.push({
               type: "video" as const,
-              title: req.body[titleKey],
-              description: req.body[descriptionKey] || '',
+              title: lecture.title,
+              description: lecture.description || '',
               url: `/uploads/videos/${lectureFile.filename}`,
               duration: "TBD",
               fileSize: `${Math.round(lectureFile.size / (1024 * 1024))}MB`
