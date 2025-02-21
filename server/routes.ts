@@ -115,15 +115,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Parse lecture data
+        // Parse lecture data and combine with files
         const lectures = [];
         let index = 0;
         while (req.body[`lectures[${index}][title]`]) {
+          const lectureFile = lectureFiles[index];
+          if (!lectureFile) break;
+
           lectures.push({
             type: "video" as const,
             title: req.body[`lectures[${index}][title]`],
             description: req.body[`lectures[${index}][description]`],
-            url: `/uploads/videos/${lectureFiles[index].filename}`,
+            url: `/uploads/videos/${lectureFile.filename}`,
           });
           index++;
         }

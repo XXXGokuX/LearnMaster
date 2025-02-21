@@ -67,7 +67,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCourse(courseData: InsertCourse): Promise<Course> {
-    const [course] = await db.insert(courses).values(courseData).returning();
+    // Ensure content is properly formatted as an array
+    const data = {
+      ...courseData,
+      content: Array.isArray(courseData.content) ? courseData.content : [],
+    };
+
+    const [course] = await db.insert(courses).values(data).returning();
     return course;
   }
 
