@@ -11,13 +11,9 @@ import fs from 'fs';
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    let uploadDir = 'uploads';
-    if (file.fieldname === 'thumbnail') {
-      uploadDir = 'uploads';
-    } else if (file.fieldname.startsWith('lecture_')) {
-      uploadDir = 'uploads/videos';
-    }
+    const uploadDir = file.fieldname === 'thumbnail' ? 'uploads' : 'uploads/videos';
 
+    // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -34,11 +30,10 @@ const upload = multer({
   storage: multerStorage,
   limits: {
     fileSize: 1024 * 1024 * 1024, // 1GB limit
-    fieldSize: 1024 * 1024 * 1024, // 1GB limit for text fields
   }
 }).fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: 'lecture_*', maxCount: 1 }
+  { name: /^lecture_\d+$/, maxCount: 1 } // Allow any lecture_N where N is a number
 ]);
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -50,9 +45,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Add CORS headers for file uploads
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Credentials', 'true');
     next();
   });
 
@@ -62,7 +58,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Multer error:', err);
         return res.status(400).json({
           error: "File upload error",
-          message: err.message
+          message: err.message,
+          details: err
         });
       } else if (err) {
         console.error('Unknown error:', err);
@@ -95,6 +92,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .map(([, files]) => files[0]);
 
+        console.log("Processed lecture files:", lectureFiles);
+
         if (lectureFiles.length === 0) {
           return res.status(400).json({
             error: "Missing lectures",
@@ -115,6 +114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           index++;
         }
 
+        console.log("Processed lectures:", lectures);
+
         const courseData = {
           title: req.body.title,
           description: req.body.description,
@@ -125,7 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: lectures,
         };
 
-        console.log("Processing course data:", courseData);
+        console.log("Final course data:", courseData);
 
         const parsed = insertCourseSchema.safeParse(courseData);
         if (!parsed.success) {
