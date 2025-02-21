@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { z } from "zod";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Clock, Users, BookOpen, GraduationCap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { InsertUser, insertUserSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +25,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Redirect } from "wouter";
-
+import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 
 const categories = [
   "Web Development",
@@ -136,17 +137,14 @@ export default function AdminCourses() {
 
       const formData = new FormData();
 
-      // Add basic course data
       formData.append('title', formValues.title);
       formData.append('description', formValues.description);
       formData.append('category', formValues.category);
       formData.append('level', formValues.level);
       formData.append('duration', formValues.duration);
 
-      // Add thumbnail
       formData.append('thumbnail', thumbnailInput.files[0]);
 
-      // Add lecture data and videos
       formValues.lectures.forEach((lecture, index) => {
         formData.append(`lectures[${index}][title]`, lecture.title);
         formData.append(`lectures[${index}][description]`, lecture.description);
@@ -163,7 +161,7 @@ export default function AdminCourses() {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/courses', true);
       xhr.withCredentials = true;
-      xhr.timeout = 300000; // 5 minutes timeout
+      xhr.timeout = 300000; 
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -288,13 +286,19 @@ export default function AdminCourses() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="container mx-auto py-24">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Course Management</h1>
+      <main className="container mx-auto py-24 px-4">
+        <div className="flex justify-between items-center mb-12">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Course Management</h1>
+            <p className="text-muted-foreground">Manage and organize your course catalog</p>
+          </div>
           <div className="space-x-4">
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline">Create User</Button>
+                <Button variant="outline" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Create User
+                </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -328,7 +332,10 @@ export default function AdminCourses() {
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
-                <Button>Create Course</Button>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Course
+                </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -550,42 +557,86 @@ export default function AdminCourses() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses?.map((course) => (
-            <div key={course.id} className="bg-white rounded-lg shadow-sm p-6">
-              <img
-                src={course.thumbnail}
-                alt={course.title}
-                className="w-full h-48 object-cover rounded-lg mb-4"
-              />
-              <h2 className="text-xl font-semibold mb-2">{course.title}</h2>
-              <p className="text-gray-600 mb-2">{course.description}</p>
-              <div className="space-y-2 mb-4">
-                <p><span className="font-semibold">Category:</span> {course.category}</p>
-                <p><span className="font-semibold">Level:</span> {course.level}</p>
-                <p><span className="font-semibold">Duration:</span> {course.duration}</p>
-                <p><span className="font-semibold">Lectures:</span> {course.content.length}</p>
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {courses?.map((course, index) => (
+            <motion.div
+              key={course.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 h-full flex flex-col">
+                <div className="relative aspect-video">
+                  <img
+                    src={course.thumbnail}
+                    alt={course.title}
+                    className="w-full h-full object-cover rounded-t-lg"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-t-lg" />
+                  <Badge className="absolute top-4 left-4 bg-white/90 text-primary">
+                    {course.category}
+                  </Badge>
+                </div>
+
+                <div className="p-6 flex-1 flex flex-col">
+                  <h2 className="text-xl font-semibold mb-3 line-clamp-2 flex-none">
+                    {course.title}
+                  </h2>
+                  <p className="text-muted-foreground mb-4 line-clamp-3 flex-1">
+                    {course.description}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span>{course.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <GraduationCap className="h-4 w-4 text-primary" />
+                      <span className="capitalize">{course.level}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <BookOpen className="h-4 w-4 text-primary" />
+                      <span>{course.content.length} Lectures</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="h-4 w-4 text-primary" />
+                      <span>0 Students</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this course?')) {
+                        deleteMutation.mutate(course.id);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Course
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-end">
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    if (confirm('Are you sure you want to delete this course?')) {
-                      deleteMutation.mutate(course.id);
-                    }
-                  }}
-                  disabled={deleteMutation.isPending}
-                >
-                  {deleteMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    "Delete Course"
-                  )}
-                </Button>
-              </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </main>
     </div>
   );
