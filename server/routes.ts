@@ -14,8 +14,10 @@ const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Create specific directories for different file types
     let uploadDir = 'uploads';
-    if (file.fieldname === 'video') {
+    if (file.fieldname.startsWith('lecture_')) {
       uploadDir = 'uploads/videos';
+    } else if (file.fieldname === 'thumbnail') {
+      uploadDir = 'uploads';
     }
 
     // Create directory if it doesn't exist
@@ -36,7 +38,10 @@ const upload = multer({
   limits: {
     fileSize: 500 * 1024 * 1024, // 500MB limit for video files
   }
-});
+}).fields([
+  { name: 'thumbnail', maxCount: 1 },
+  { name: /^lecture_\d+_video$/, maxCount: 1 } // Dynamic field names for lecture videos
+]);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -98,10 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(course);
   });
 
-  app.post("/api/courses", upload.fields([
-    { name: 'thumbnail', maxCount: 1 },
-    { name: 'video', maxCount: 1 }
-  ]), async (req, res) => {
+  app.post("/api/courses", upload, async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
       return res.status(403).send("Unauthorized");
     }
@@ -111,10 +113,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Received files:', req.files);
 
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const thumbnailFile = files.thumbnail?.[0];
+      const lectureVideos = Object.entries(files)
+        .filter(([key]) => key.startsWith('lecture_'))
+        .sort((a, b) => {
+          const aIndex = parseInt(a[0].match(/\d+/)?.[0] || '0');
+          const bIndex = parseInt(b[0].match(/\d+/)?.[0] || '0');
+          return aIndex - bIndex;
+        })
+        .map(([, files]) => files[0]);
 
-      if (!files.thumbnail?.[0] || !files.video?.[0]) {
-        return res.status(400).send("Thumbnail and video files are required");
+      if (!thumbnailFile || lectureVideos.length === 0) {
+        return res.status(400).send("Thumbnail and at least one lecture video are required");
       }
+
+      const lectureContent = lectureVideos.map((video, index) => ({
+        type: "video",
+        title: req.body[`lectures[${index}][title]`],
+        description: req.body[`lectures[${index}][description]`],
+        url: `/uploads/videos/${video.filename}`,
+      }));
 
       const courseData = {
         title: req.body.title,
@@ -122,14 +140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: req.body.category,
         level: req.body.level,
         duration: req.body.duration,
-        thumbnail: `/uploads/${files.thumbnail[0].filename}`,
-        content: JSON.stringify([{
-          type: "video",
-          title: req.body.title,
-          description: "Course introduction video",
-          url: `/uploads/videos/${files.video[0].filename}`,
-          duration: "TBD",
-        }])
+        thumbnail: `/uploads/${thumbnailFile.filename}`,
+        content: lectureContent,
       };
 
       console.log('Processed course data:', courseData);
@@ -207,7 +219,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
     try {
-      // Get enrollments specific to the logged-in user
       const enrollments = await storage.getEnrollments(req.user.id);
       console.log(`Fetched ${enrollments.length} enrollments for user ${req.user.id}`);
       res.json(enrollments);
@@ -238,13 +249,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-  });
-
-  // Add logging middleware for video requests
-  app.use('/uploads', (req, res, next) => {
-    console.log('Video request:', req.url);
-    console.log('File path:', path.join(process.cwd(), 'uploads', req.url));
-    next();
   });
 
   const httpServer = createServer(app);
