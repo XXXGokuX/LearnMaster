@@ -12,12 +12,9 @@ import fs from 'fs';
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = file.fieldname === 'thumbnail' ? 'uploads' : 'uploads/videos';
-
-    // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
@@ -43,11 +40,9 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
-  // Increase payload limits for the entire application
   app.use(express.json({ limit: '1gb' }));
   app.use(express.urlencoded({ extended: true, limit: '1gb' }));
 
-  // Add CORS headers for file uploads
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
@@ -56,10 +51,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
-  // Make uploads directory accessible
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-  // Ensure uploads directories exist
   ['uploads', 'uploads/videos'].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -110,15 +103,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Process lectures array from form data
         const lectures = [];
-        let index = 0;
-        while (req.body[`lectures[${index}][title]`] && lectureFiles[index]) {
-          lectures.push({
-            type: "video" as const,
-            title: req.body[`lectures[${index}][title]`],
-            description: req.body[`lectures[${index}][description]`] || '',
-            url: `/uploads/videos/${lectureFiles[index].filename}`
-          });
-          index++;
+        for (let index = 0; index < 5; index++) {
+          const titleKey = `lectures[${index}][title]`;
+          const descriptionKey = `lectures[${index}][description]`;
+          const lectureFile = lectureFiles[index];
+
+          if (req.body[titleKey] && lectureFile) {
+            lectures.push({
+              type: "video" as const,
+              title: req.body[titleKey],
+              description: req.body[descriptionKey] || '',
+              url: `/uploads/videos/${lectureFile.filename}`
+            });
+          }
         }
 
         console.log("Processed lectures:", lectures);
