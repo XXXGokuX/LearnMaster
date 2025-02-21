@@ -96,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Get lecture files
+        // Get lecture files sorted by index
         const lectureFiles = Object.entries(files)
           .filter(([key]) => key.startsWith('lecture_'))
           .sort((a, b) => {
@@ -108,25 +108,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log("Processed lecture files:", lectureFiles);
 
-        if (lectureFiles.length === 0) {
-          return res.status(400).json({
-            error: "Missing lectures",
-            message: "At least one lecture video is required"
-          });
-        }
-
-        // Parse lecture data and combine with files
+        // Process lectures array from form data
         const lectures = [];
         let index = 0;
-        while (req.body[`lectures[${index}][title]`]) {
-          const lectureFile = lectureFiles[index];
-          if (!lectureFile) break;
-
+        while (req.body[`lectures[${index}][title]`] && lectureFiles[index]) {
           lectures.push({
             type: "video" as const,
             title: req.body[`lectures[${index}][title]`],
-            description: req.body[`lectures[${index}][description]`],
-            url: `/uploads/videos/${lectureFile.filename}`,
+            description: req.body[`lectures[${index}][description]`] || '',
+            url: `/uploads/videos/${lectureFiles[index].filename}`
           });
           index++;
         }
@@ -140,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           level: req.body.level,
           duration: req.body.duration,
           thumbnail: `/uploads/${thumbnailFile.filename}`,
-          content: lectures,
+          content: lectures
         };
 
         console.log("Final course data:", courseData);
