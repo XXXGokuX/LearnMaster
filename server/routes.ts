@@ -33,7 +33,11 @@ const upload = multer({
   }
 }).fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: /^lecture_\d+$/, maxCount: 1 } // Allow any lecture_N where N is a number
+  { name: 'lecture_0', maxCount: 1 },
+  { name: 'lecture_1', maxCount: 1 },
+  { name: 'lecture_2', maxCount: 1 },
+  { name: 'lecture_3', maxCount: 1 },
+  { name: 'lecture_4', maxCount: 1 }
 ]);
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -50,6 +54,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     res.header('Access-Control-Allow-Credentials', 'true');
     next();
+  });
+
+  // Make uploads directory accessible
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // Ensure uploads directories exist
+  ['uploads', 'uploads/videos'].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   });
 
   app.post("/api/courses", (req, res) => {
@@ -268,16 +282,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { courseId, progress } = req.body;
     await storage.updateProgress(req.user.id, courseId, progress);
     res.sendStatus(200);
-  });
-
-  // Make uploads directory accessible
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-  // Ensure uploads directories exist
-  ['uploads', 'uploads/videos'].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
   });
 
   const httpServer = createServer(app);
