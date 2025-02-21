@@ -72,12 +72,7 @@ export class DatabaseStorage implements IStorage {
     // Ensure content is properly formatted
     const formattedData = {
       ...courseData,
-      content: courseData.content || [] as {
-        type: "video";
-        title: string;
-        description?: string;
-        url?: string;
-      }[]
+      content: Array.isArray(courseData.content) ? courseData.content : [],
     };
 
     console.log("Formatted course data:", formattedData);

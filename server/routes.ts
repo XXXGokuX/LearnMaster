@@ -91,15 +91,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Process lectures array from form data
         const lectures = [];
-        const lectureCount = Object.keys(req.body)
-          .filter(key => key.startsWith('lectures[') && key.endsWith('][title]'))
-          .length;
-
-        for (let i = 0; i < lectureCount; i++) {
+        for (let i = 0; i < 5; i++) {
           const titleKey = `lectures[${i}][title]`;
           const descriptionKey = `lectures[${i}][description]`;
           const lectureFile = files[`lecture_${i}`]?.[0];
 
+          // Only add lecture if both title and file exist
           if (req.body[titleKey] && lectureFile) {
             lectures.push({
               type: "video" as const,
