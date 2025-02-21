@@ -1,5 +1,4 @@
 import { useAuth } from "@/hooks/use-auth";
-import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Course, Enrollment } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
 
 export default function CoursePage() {
   const [, params] = useRoute("/course/:id");
@@ -56,7 +56,7 @@ export default function CoursePage() {
   if (isLoadingCourse || isLoadingEnrollments) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <DashboardNav />
+        <Navbar />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -70,9 +70,8 @@ export default function CoursePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardNav />
-
-      <main className="container mx-auto py-8">
+      <Navbar />
+      <main className="container mx-auto py-24">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-4">{course.title}</h1>
