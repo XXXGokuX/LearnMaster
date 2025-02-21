@@ -78,7 +78,11 @@ export default function CoursePage() {
     return <Redirect to="/" />;
   }
 
-  if (!course.content || course.content.length === 0) {
+  // Debug logging
+  console.log('Course content:', course.content);
+
+  // More thorough content check
+  if (!Array.isArray(course.content) || course.content.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -87,6 +91,9 @@ export default function CoursePage() {
             <AlertTriangle className="h-12 w-12 text-yellow-500" />
             <h1 className="text-2xl font-bold">No Content Available</h1>
             <p className="text-muted-foreground">This course doesn't have any content yet.</p>
+            <p className="text-sm text-muted-foreground">
+              Content type: {typeof course.content}, Length: {Array.isArray(course.content) ? course.content.length : 'N/A'}
+            </p>
           </div>
         </main>
       </div>
