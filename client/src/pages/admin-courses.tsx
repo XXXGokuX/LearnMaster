@@ -539,7 +539,7 @@ export default function AdminCourses() {
                 <p><span className="font-semibold">Category:</span> {course.category}</p>
                 <p><span className="font-semibold">Level:</span> {course.level}</p>
                 <p><span className="font-semibold">Duration:</span> {course.duration}</p>
-                <p><span className="font-semibold">Lectures:</span> {course.lectures.length}</p>
+                <p><span className="font-semibold">Lectures:</span> {course.content.length}</p>
               </div>
               <div className="flex justify-end">
                 <Button
