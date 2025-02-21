@@ -22,10 +22,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
-import { InsertUser, insertUserSchema } from "@shared/schema";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
+import { InsertUser, insertUserSchema } from "@shared/schema";
 
 const categories = [
   "Web Development",
@@ -44,21 +43,34 @@ const levels = [
   { value: "advanced", label: "Advanced" }
 ];
 
+const lectureSchema = z.object({
+  title: z.string().min(1, "Lecture title is required"),
+  description: z.string().min(1, "Lecture description is required"),
+  videoFile: z.any().optional(),
+});
+
 const courseFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   level: z.string().min(1, "Level is required"),
   duration: z.string().min(1, "Duration is required"),
+  lectures: z.array(lectureSchema).min(1, "At least one lecture is required"),
 });
 
 type CourseFormData = z.infer<typeof courseFormSchema>;
+type LectureFormData = z.infer<typeof lectureSchema>;
+
+interface LectureFile {
+  id: string;
+  file: File;
+}
 
 export default function AdminCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [lectureFiles, setLectureFiles] = useState<LectureFile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -71,99 +83,69 @@ export default function AdminCourses() {
       category: "Other",
       level: "beginner",
       duration: "",
+      lectures: [{ title: "", description: "" }],
     },
   });
 
-  const { data: courses } = useQuery<Course[]>({
-    queryKey: ["/api/courses"],
+  const { fields: lectureFields, append, remove } = form.useFieldArray({
+    name: "lectures",
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      console.log("Creating course with FormData...");
-      const response = await fetch("/api/courses", {
-        method: "POST",
-        body: formData,
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create course");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
-      setThumbnailPreview(null);
-      setVideoFile(null);
-      setIsOpen(false);
-      form.reset();
-      toast({
-        title: "Success",
-        description: "Course created successfully",
-      });
-    },
-    onError: (error: Error) => {
-      console.error('Course creation error:', error);
-      toast({
-        title: "Error creating course",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'video') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (type === 'video') {
-      setVideoFile(file);
-    } else if (type === 'thumbnail') {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnailPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleLectureVideoChange = (index: number, file: File) => {
+    const newLectureFile: LectureFile = {
+      id: `lecture-${index}`,
+      file,
+    };
+    setLectureFiles(prev => {
+      const filtered = prev.filter(f => f.id !== `lecture-${index}`);
+      return [...filtered, newLectureFile];
+    });
   };
 
   const onSubmit = async (formValues: CourseFormData) => {
-    console.log("Form submitted, validation passed with values:", formValues);
-
     try {
       const thumbnailInput = document.getElementById('thumbnail-upload') as HTMLInputElement;
-      const videoInput = document.getElementById('video-upload') as HTMLInputElement;
-
-      if (!thumbnailInput?.files?.[0] || !videoInput?.files?.[0]) {
+      if (!thumbnailInput?.files?.[0]) {
         toast({
-          title: "Missing files",
-          description: "Please upload thumbnail and video files",
+          title: "Missing thumbnail",
+          description: "Please upload a course thumbnail",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (lectureFiles.length !== formValues.lectures.length) {
+        toast({
+          title: "Missing videos",
+          description: "Please upload videos for all lectures",
           variant: "destructive",
         });
         return;
       }
 
       const formData = new FormData();
-
       Object.entries(formValues).forEach(([key, value]) => {
-        formData.append(key, value.toString());
+        if (key !== 'lectures') {
+          formData.append(key, value.toString());
+        }
       });
 
       formData.append('thumbnail', thumbnailInput.files[0]);
-      formData.append('video', videoInput.files[0]);
 
-      formData.append('content', JSON.stringify([
-        {
-          type: "video",
-          title: formValues.title,
-          description: "Course introduction video",
-          url: `/uploads/videos/${videoInput.files[0].name}`,
-          duration: "TBD",
-        }
-      ]));
+      // Add lecture videos
+      lectureFiles.forEach((lectureFile, index) => {
+        formData.append(`lecture_${index}_video`, lectureFile.file);
+      });
+
+      // Add lecture content as JSON
+      const lectureContent = formValues.lectures.map((lecture, index) => ({
+        type: "video",
+        title: lecture.title,
+        description: lecture.description,
+        url: `/uploads/videos/lecture_${index}_${lectureFiles[index].file.name}`,
+      }));
+
+      formData.append('content', JSON.stringify(lectureContent));
 
       setIsUploading(true);
       setUploadProgress(0);
@@ -184,7 +166,7 @@ export default function AdminCourses() {
           const response = JSON.parse(xhr.responseText);
           queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
           setThumbnailPreview(null);
-          setVideoFile(null);
+          setLectureFiles([]);
           setIsOpen(false);
           form.reset();
           toast({
@@ -410,7 +392,16 @@ export default function AdminCourses() {
                         id="thumbnail-upload"
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleFileChange(e, 'thumbnail')}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setThumbnailPreview(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
                       />
                       {thumbnailPreview && (
                         <div className="mt-2 rounded-lg overflow-hidden">
@@ -423,20 +414,84 @@ export default function AdminCourses() {
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="video-upload">Course Video</Label>
-                      <Input
-                        id="video-upload"
-                        type="file"
-                        accept="video/*"
-                        onChange={(e) => handleFileChange(e, 'video')}
-                      />
-                      {videoFile && (
-                        <p className="mt-2 text-sm text-gray-600">
-                          Selected video: {videoFile.name}
-                        </p>
-                      )}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">Lectures</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => append({ title: "", description: "" })}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Lecture
+                        </Button>
+                      </div>
+
+                      {lectureFields.map((field, index) => (
+                        <div key={field.id} className="space-y-4 p-4 border rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-medium">Lecture {index + 1}</h4>
+                            {index > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => remove(index)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Lecture Title</Label>
+                            <Input
+                              {...form.register(`lectures.${index}.title`)}
+                              placeholder="Enter lecture title"
+                            />
+                            {form.formState.errors.lectures?.[index]?.title && (
+                              <p className="text-sm text-red-500">
+                                {form.formState.errors.lectures[index]?.title?.message}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Lecture Description</Label>
+                            <Textarea
+                              {...form.register(`lectures.${index}.description`)}
+                              placeholder="Enter lecture description"
+                            />
+                            {form.formState.errors.lectures?.[index]?.description && (
+                              <p className="text-sm text-red-500">
+                                {form.formState.errors.lectures[index]?.description?.message}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Lecture Video</Label>
+                            <Input
+                              type="file"
+                              accept="video/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleLectureVideoChange(index, file);
+                                }
+                              }}
+                            />
+                            {lectureFiles.find(f => f.id === `lecture-${index}`) && (
+                              <p className="text-sm text-muted-foreground">
+                                Video selected: {lectureFiles.find(f => f.id === `lecture-${index}`)?.file.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+
                     {isUploading && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -446,20 +501,16 @@ export default function AdminCourses() {
                         <Progress value={uploadProgress} className="w-full" />
                       </div>
                     )}
+
                     <Button
                       type="submit"
                       className="w-full"
-                      disabled={isUploading || createMutation.isPending}
+                      disabled={isUploading}
                     >
                       {isUploading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Uploading Course...
-                        </>
-                      ) : createMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Course...
                         </>
                       ) : (
                         "Create Course"
