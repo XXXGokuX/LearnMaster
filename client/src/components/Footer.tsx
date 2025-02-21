@@ -5,7 +5,11 @@ export function Footer() {
     "About Us": ["Our Story", "Team", "Careers", "Press"],
     "For Students": ["How it Works", "FAQ", "Support", "Resources"],
     "For Instructors": ["Become an Instructor", "Teaching Center", "Guidelines"],
-    "Legal": ["Terms of Service", "Privacy Policy", "Cookie Policy"],
+    "Legal": [
+      { text: "Terms of Service", link: "/terms-and-conditions" },
+      { text: "Privacy Policy", link: "/privacy-policy" },
+      { text: "Refund Policy", link: "/refund-policy" },
+    ],
   };
 
   return (
@@ -16,11 +20,17 @@ export function Footer() {
             <div key={category}>
               <h3 className="font-semibold mb-4">{category}</h3>
               <ul className="space-y-2">
-                {links.map((link) => (
-                  <li key={link}>
-                    <Link href="#" className="text-muted-foreground hover:text-primary">
-                      {link}
-                    </Link>
+                {Array.isArray(links) && links.map((link) => (
+                  <li key={typeof link === 'string' ? link : link.text}>
+                    {typeof link === 'string' ? (
+                      <Link href="#" className="text-muted-foreground hover:text-primary">
+                        {link}
+                      </Link>
+                    ) : (
+                      <Link href={link.link} className="text-muted-foreground hover:text-primary">
+                        {link.text}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

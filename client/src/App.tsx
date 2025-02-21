@@ -12,17 +12,23 @@ import AdminStudents from "@/pages/admin-students";
 import CoursePage from "@/pages/course-page";
 import MyCourses from "@/pages/my-courses";
 import BrowseCourses from "@/pages/browse-courses";
+import PrivacyPolicy from "@/pages/policies/privacy-policy";
+import TermsAndConditions from "@/pages/policies/terms-and-conditions";
+import RefundPolicy from "@/pages/policies/refund-policy";
 
 function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <Route path="/" component={HomePage} /> 
+      <Route path="/" component={HomePage} />
       <ProtectedRoute path="/admin/courses" component={AdminCourses} />
       <ProtectedRoute path="/admin/students" component={AdminStudents} />
       <ProtectedRoute path="/course/:id" component={CoursePage} />
       <ProtectedRoute path="/my-courses" component={MyCourses} />
       <ProtectedRoute path="/browse-courses" component={BrowseCourses} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-and-conditions" component={TermsAndConditions} />
+      <Route path="/refund-policy" component={RefundPolicy} />
       <Route component={NotFound} />
     </Switch>
   );
