@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Clock, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Navbar } from "@/components/Navbar";
 
 export default function BrowseCourses() {
   const { user } = useAuth();
@@ -51,8 +52,9 @@ export default function BrowseCourses() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
-      <main className="container mx-auto py-8 px-4">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="container mx-auto py-24 px-4">
         <motion.h1 
           className="text-3xl font-bold mb-8"
           initial={{ opacity: 0, y: 20 }}

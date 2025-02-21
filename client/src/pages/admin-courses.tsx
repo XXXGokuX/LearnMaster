@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { DashboardNav } from "@/components/ui/dashboard-nav";
+import { Navbar } from "@/components/Navbar";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Course } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -247,7 +247,7 @@ export default function AdminCourses() {
     defaultValues: {
       username: "",
       password: "",
-      role: "student" 
+      role: "student"
     }
   });
 
@@ -278,11 +278,10 @@ export default function AdminCourses() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardNav />
-
-      <main className="container mx-auto py-8">
+      <Navbar />
+      <main className="container mx-auto py-24">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold">Course Management</h1>
           <div className="space-x-4">
             <Dialog>
               <DialogTrigger asChild>

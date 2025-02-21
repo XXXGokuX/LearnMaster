@@ -1,9 +1,9 @@
 import { useAuth } from "@/hooks/use-auth";
-import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { useQuery } from "@tanstack/react-query";
 import { Course, User, Enrollment } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Redirect } from "wouter";
+import { Navbar } from "@/components/Navbar";
 import {
   Table,
   TableBody,
@@ -45,9 +45,8 @@ export default function AdminStudents() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardNav />
-
-      <main className="container mx-auto py-8">
+      <Navbar />
+      <main className="container mx-auto py-24">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Student Management</h1>
           <p className="text-gray-600 mt-2">
