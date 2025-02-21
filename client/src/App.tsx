@@ -10,6 +10,8 @@ import AuthPage from "@/pages/auth-page";
 import AdminCourses from "@/pages/admin-courses";
 import AdminStudents from "@/pages/admin-students";
 import CoursePage from "@/pages/course-page";
+import MyCourses from "@/pages/my-courses";
+import BrowseCourses from "@/pages/browse-courses";
 
 function Router() {
   return (
@@ -19,6 +21,8 @@ function Router() {
       <ProtectedRoute path="/admin/courses" component={AdminCourses} />
       <ProtectedRoute path="/admin/students" component={AdminStudents} />
       <ProtectedRoute path="/course/:id" component={CoursePage} />
+      <ProtectedRoute path="/my-courses" component={MyCourses} />
+      <ProtectedRoute path="/browse-courses" component={BrowseCourses} />
       <Route component={NotFound} />
     </Switch>
   );
