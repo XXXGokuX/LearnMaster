@@ -25,11 +25,7 @@ export default function BrowseCourses() {
 
   const enrollMutation = useMutation({
     mutationFn: async (courseId: number) => {
-      const res = await apiRequest("POST", "/api/enrollments", {
-        userId: user!.id,
-        courseId,
-      });
-      return await res.json();
+      await apiRequest("POST", "/api/enroll", { courseId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enrollments", user?.id] });
