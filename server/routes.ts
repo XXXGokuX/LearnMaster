@@ -7,20 +7,17 @@ import multer from "multer";
 import path from "path";
 import express from 'express';
 import fs from 'fs';
-import { hashPassword } from './auth';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Create specific directories for different file types
     let uploadDir = 'uploads';
-    if (file.fieldname.startsWith('lecture_')) {
-      uploadDir = 'uploads/videos';
-    } else if (file.fieldname === 'thumbnail') {
+    if (file.fieldname === 'thumbnail') {
       uploadDir = 'uploads';
+    } else if (file.fieldname.startsWith('lecture_')) {
+      uploadDir = 'uploads/videos';
     }
 
-    // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -33,14 +30,14 @@ const multerStorage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: multerStorage,
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB limit for video files
+    fileSize: 500 * 1024 * 1024, // 500MB limit
   }
 }).fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: /^lecture_\d+_video$/, maxCount: 1 } // Dynamic field names for lecture videos
+  { name: /lecture_.*/, maxCount: 20 } // Allow up to 20 lecture videos
 ]);
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -109,30 +106,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      console.log('Received request body:', req.body);
-      console.log('Received files:', req.files);
-
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       const thumbnailFile = files.thumbnail?.[0];
-      const lectureVideos = Object.entries(files)
+
+      // Get all lecture video files and sort them by lecture index
+      const lectureFiles = Object.entries(files)
         .filter(([key]) => key.startsWith('lecture_'))
         .sort((a, b) => {
-          const aIndex = parseInt(a[0].match(/\d+/)?.[0] || '0');
-          const bIndex = parseInt(b[0].match(/\d+/)?.[0] || '0');
+          const aIndex = parseInt(a[0].split('_')[1]);
+          const bIndex = parseInt(b[0].split('_')[1]);
           return aIndex - bIndex;
         })
         .map(([, files]) => files[0]);
 
-      if (!thumbnailFile || lectureVideos.length === 0) {
+      if (!thumbnailFile || lectureFiles.length === 0) {
         return res.status(400).send("Thumbnail and at least one lecture video are required");
       }
 
-      const lectureContent = lectureVideos.map((video, index) => ({
-        type: "video",
-        title: req.body[`lectures[${index}][title]`],
-        description: req.body[`lectures[${index}][description]`],
-        url: `/uploads/videos/${video.filename}`,
-      }));
+      // Parse lecture data from form
+      const lectures = [];
+      let index = 0;
+      while (req.body[`lectures[${index}][title]`]) {
+        lectures.push({
+          title: req.body[`lectures[${index}][title]`],
+          description: req.body[`lectures[${index}][description]`],
+          type: "video",
+          url: `/uploads/videos/${lectureFiles[index].filename}`,
+        });
+        index++;
+      }
 
       const courseData = {
         title: req.body.title,
@@ -141,14 +143,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         level: req.body.level,
         duration: req.body.duration,
         thumbnail: `/uploads/${thumbnailFile.filename}`,
-        content: lectureContent,
+        content: lectures,
       };
-
-      console.log('Processed course data:', courseData);
 
       const parsed = insertCourseSchema.safeParse(courseData);
       if (!parsed.success) {
-        console.error('Validation error:', parsed.error);
         return res.status(400).json({ 
           error: "Validation failed", 
           details: parsed.error.errors 
@@ -156,13 +155,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const course = await storage.createCourse(parsed.data);
-      console.log('Created course:', course);
       res.status(201).json(course);
     } catch (error) {
       console.error('Error creating course:', error);
       res.status(500).json({ 
-        error: "Failed to create course", 
-        message: error instanceof Error ? error.message : 'Unknown error' 
+        error: "Failed to create course",
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -236,13 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Make uploads directory accessible
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
-    setHeaders: (res, filepath) => {
-      if (filepath.endsWith('.mp4')) {
-        res.set('Content-Type', 'video/mp4');
-      }
-    }
-  }));
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // Ensure uploads directories exist
   ['uploads', 'uploads/videos'].forEach(dir => {

@@ -126,34 +126,34 @@ export default function AdminCourses() {
       }
 
       const formData = new FormData();
-      Object.entries(formValues).forEach(([key, value]) => {
-        if (key !== 'lectures') {
-          formData.append(key, value.toString());
-        }
-      });
 
+      // Add basic course data
+      formData.append('title', formValues.title);
+      formData.append('description', formValues.description);
+      formData.append('category', formValues.category);
+      formData.append('level', formValues.level);
+      formData.append('duration', formValues.duration);
+
+      // Add thumbnail
       formData.append('thumbnail', thumbnailInput.files[0]);
 
-      // Add lecture videos
-      lectureFiles.forEach((lectureFile, index) => {
-        formData.append(`lecture_${index}_video`, lectureFile.file);
+      // Add lecture data and videos
+      formValues.lectures.forEach((lecture, index) => {
+        formData.append(`lectures[${index}][title]`, lecture.title);
+        formData.append(`lectures[${index}][description]`, lecture.description);
+
+        const lectureFile = lectureFiles.find(f => f.id === `lecture-${index}`)?.file;
+        if (lectureFile) {
+          formData.append(`lecture_${index}`, lectureFile);
+        }
       });
-
-      // Add lecture content as JSON
-      const lectureContent = formValues.lectures.map((lecture, index) => ({
-        type: "video",
-        title: lecture.title,
-        description: lecture.description,
-        url: `/uploads/videos/lecture_${index}_${lectureFiles[index].file.name}`,
-      }));
-
-      formData.append('content', JSON.stringify(lectureContent));
 
       setIsUploading(true);
       setUploadProgress(0);
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/courses', true);
+      xhr.withCredentials = true;
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -165,7 +165,6 @@ export default function AdminCourses() {
       xhr.onload = () => {
         setIsUploading(false);
         if (xhr.status === 201) {
-          const response = JSON.parse(xhr.responseText);
           queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
           setThumbnailPreview(null);
           setLectureFiles([]);
@@ -179,7 +178,7 @@ export default function AdminCourses() {
           console.error('Upload failed:', xhr.responseText);
           toast({
             title: "Error creating course",
-            description: xhr.responseText || "Failed to create course",
+            description: JSON.parse(xhr.responseText)?.message || "Failed to create course",
             variant: "destructive",
           });
         }
@@ -187,16 +186,12 @@ export default function AdminCourses() {
 
       xhr.onerror = () => {
         setIsUploading(false);
-        console.error('Upload error:', xhr.responseText);
         toast({
           title: "Error creating course",
           description: "Network error occurred while uploading",
           variant: "destructive",
         });
       };
-
-      xhr.setRequestHeader('Accept', 'application/json');
-      xhr.withCredentials = true;
 
       xhr.send(formData);
     } catch (error) {
