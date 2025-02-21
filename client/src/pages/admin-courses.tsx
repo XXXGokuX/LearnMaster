@@ -116,6 +116,15 @@ export default function AdminCourses() {
         return;
       }
 
+      if (lectureFiles.length === 0) {
+        toast({
+          title: "Missing videos",
+          description: "Please upload at least one lecture video",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (lectureFiles.length !== formValues.lectures.length) {
         toast({
           title: "Missing videos",
@@ -175,10 +184,16 @@ export default function AdminCourses() {
             description: "Course created successfully",
           });
         } else {
-          console.error('Upload failed:', xhr.responseText);
+          let errorMessage = "Failed to create course";
+          try {
+            const response = JSON.parse(xhr.responseText);
+            errorMessage = response.message || response.error || errorMessage;
+          } catch (e) {
+            console.error('Error parsing response:', e);
+          }
           toast({
             title: "Error creating course",
-            description: JSON.parse(xhr.responseText)?.message || "Failed to create course",
+            description: errorMessage,
             variant: "destructive",
           });
         }
@@ -199,7 +214,7 @@ export default function AdminCourses() {
       console.error('Form submission error:', error);
       toast({
         title: "Error",
-        description: "Failed to prepare course data",
+        description: error instanceof Error ? error.message : "Failed to prepare course data",
         variant: "destructive",
       });
     }

@@ -106,7 +106,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      console.log("Received form data:", req.body);
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      console.log("Received files:", files);
+
       const thumbnailFile = files.thumbnail?.[0];
 
       // Get all lecture video files and sort them by lecture index
@@ -119,22 +122,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .map(([, files]) => files[0]);
 
-      if (!thumbnailFile || lectureFiles.length === 0) {
-        return res.status(400).send("Thumbnail and at least one lecture video are required");
+      console.log("Processed lecture files:", lectureFiles);
+
+      if (!thumbnailFile) {
+        return res.status(400).send("Thumbnail is required");
+      }
+
+      if (lectureFiles.length === 0) {
+        return res.status(400).send("At least one lecture video is required");
       }
 
       // Parse lecture data from form
       const lectures = [];
       let index = 0;
+
       while (req.body[`lectures[${index}][title]`]) {
         lectures.push({
+          type: "video" as const,
           title: req.body[`lectures[${index}][title]`],
           description: req.body[`lectures[${index}][description]`],
-          type: "video",
           url: `/uploads/videos/${lectureFiles[index].filename}`,
         });
         index++;
       }
+
+      console.log("Processed lectures:", lectures);
 
       const courseData = {
         title: req.body.title,
@@ -146,8 +158,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: lectures,
       };
 
+      console.log("Final course data:", courseData);
+
       const parsed = insertCourseSchema.safeParse(courseData);
       if (!parsed.success) {
+        console.error("Validation failed:", parsed.error);
         return res.status(400).json({ 
           error: "Validation failed", 
           details: parsed.error.errors 
