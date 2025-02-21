@@ -163,6 +163,7 @@ export default function AdminCourses() {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/courses', true);
       xhr.withCredentials = true;
+      xhr.timeout = 300000; // 5 minutes timeout
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -199,11 +200,20 @@ export default function AdminCourses() {
         }
       };
 
+      xhr.ontimeout = () => {
+        setIsUploading(false);
+        toast({
+          title: "Upload timeout",
+          description: "The upload took too long. Please try again.",
+          variant: "destructive",
+        });
+      };
+
       xhr.onerror = () => {
         setIsUploading(false);
         toast({
           title: "Error creating course",
-          description: "Network error occurred while uploading",
+          description: "Network error occurred while uploading. Please try again.",
           variant: "destructive",
         });
       };

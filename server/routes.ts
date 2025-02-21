@@ -33,17 +33,122 @@ const multerStorage = multer.diskStorage({
 const upload = multer({
   storage: multerStorage,
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB limit
+    fileSize: 1024 * 1024 * 1024, // 1GB limit
+    fieldSize: 1024 * 1024 * 1024, // 1GB limit for text fields
   }
 }).fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: /lecture_.*/, maxCount: 20 } // Allow up to 20 lecture videos
+  { name: 'lecture_*', maxCount: 1 }
 ]);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
-  // Add this endpoint before the course routes
+  // Increase payload limits for the entire application
+  app.use(express.json({ limit: '1gb' }));
+  app.use(express.urlencoded({ extended: true, limit: '1gb' }));
+
+  // Add CORS headers for file uploads
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+  });
+
+  app.post("/api/courses", (req, res) => {
+    upload(req, res, async function (err) {
+      if (err instanceof multer.MulterError) {
+        console.error('Multer error:', err);
+        return res.status(400).json({
+          error: "File upload error",
+          message: err.message
+        });
+      } else if (err) {
+        console.error('Unknown error:', err);
+        return res.status(500).json({
+          error: "Unknown error",
+          message: err.message
+        });
+      }
+
+      try {
+        console.log("Received form data:", req.body);
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        console.log("Received files:", files);
+
+        const thumbnailFile = files.thumbnail?.[0];
+        if (!thumbnailFile) {
+          return res.status(400).json({
+            error: "Missing thumbnail",
+            message: "Thumbnail file is required"
+          });
+        }
+
+        // Get lecture files
+        const lectureFiles = Object.entries(files)
+          .filter(([key]) => key.startsWith('lecture_'))
+          .sort((a, b) => {
+            const aIndex = parseInt(a[0].split('_')[1]);
+            const bIndex = parseInt(b[0].split('_')[1]);
+            return aIndex - bIndex;
+          })
+          .map(([, files]) => files[0]);
+
+        if (lectureFiles.length === 0) {
+          return res.status(400).json({
+            error: "Missing lectures",
+            message: "At least one lecture video is required"
+          });
+        }
+
+        // Parse lecture data
+        const lectures = [];
+        let index = 0;
+        while (req.body[`lectures[${index}][title]`]) {
+          lectures.push({
+            type: "video" as const,
+            title: req.body[`lectures[${index}][title]`],
+            description: req.body[`lectures[${index}][description]`],
+            url: `/uploads/videos/${lectureFiles[index].filename}`,
+          });
+          index++;
+        }
+
+        const courseData = {
+          title: req.body.title,
+          description: req.body.description,
+          category: req.body.category,
+          level: req.body.level,
+          duration: req.body.duration,
+          thumbnail: `/uploads/${thumbnailFile.filename}`,
+          content: lectures,
+        };
+
+        console.log("Processing course data:", courseData);
+
+        const parsed = insertCourseSchema.safeParse(courseData);
+        if (!parsed.success) {
+          console.error("Validation failed:", parsed.error);
+          return res.status(400).json({
+            error: "Validation failed",
+            details: parsed.error.errors
+          });
+        }
+
+        const course = await storage.createCourse(parsed.data);
+        console.log("Course created successfully:", course);
+        res.status(201).json(course);
+      } catch (error) {
+        console.error('Error creating course:', error);
+        res.status(500).json({
+          error: "Failed to create course",
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    });
+  });
+
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
       return res.status(403).send("Unauthorized");
@@ -88,7 +193,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Course routes
   app.get("/api/courses", async (req, res) => {
     const courses = await storage.getCourses();
     res.json(courses);
@@ -100,85 +204,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(course);
   });
 
-  app.post("/api/courses", upload, async (req, res) => {
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
-      return res.status(403).send("Unauthorized");
-    }
-
-    try {
-      console.log("Received form data:", req.body);
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      console.log("Received files:", files);
-
-      const thumbnailFile = files.thumbnail?.[0];
-
-      // Get all lecture video files and sort them by lecture index
-      const lectureFiles = Object.entries(files)
-        .filter(([key]) => key.startsWith('lecture_'))
-        .sort((a, b) => {
-          const aIndex = parseInt(a[0].split('_')[1]);
-          const bIndex = parseInt(b[0].split('_')[1]);
-          return aIndex - bIndex;
-        })
-        .map(([, files]) => files[0]);
-
-      console.log("Processed lecture files:", lectureFiles);
-
-      if (!thumbnailFile) {
-        return res.status(400).send("Thumbnail is required");
-      }
-
-      if (lectureFiles.length === 0) {
-        return res.status(400).send("At least one lecture video is required");
-      }
-
-      // Parse lecture data from form
-      const lectures = [];
-      let index = 0;
-
-      while (req.body[`lectures[${index}][title]`]) {
-        lectures.push({
-          type: "video" as const,
-          title: req.body[`lectures[${index}][title]`],
-          description: req.body[`lectures[${index}][description]`],
-          url: `/uploads/videos/${lectureFiles[index].filename}`,
-        });
-        index++;
-      }
-
-      console.log("Processed lectures:", lectures);
-
-      const courseData = {
-        title: req.body.title,
-        description: req.body.description,
-        category: req.body.category,
-        level: req.body.level,
-        duration: req.body.duration,
-        thumbnail: `/uploads/${thumbnailFile.filename}`,
-        content: lectures,
-      };
-
-      console.log("Final course data:", courseData);
-
-      const parsed = insertCourseSchema.safeParse(courseData);
-      if (!parsed.success) {
-        console.error("Validation failed:", parsed.error);
-        return res.status(400).json({ 
-          error: "Validation failed", 
-          details: parsed.error.errors 
-        });
-      }
-
-      const course = await storage.createCourse(parsed.data);
-      res.status(201).json(course);
-    } catch (error) {
-      console.error('Error creating course:', error);
-      res.status(500).json({ 
-        error: "Failed to create course",
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
 
   app.delete("/api/courses/:id", async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
@@ -188,23 +213,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
-  // Enrollment routes
   app.post("/api/enroll", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
     try {
-      // Ensure courseId is provided
       if (!req.body.courseId) {
         return res.status(400).send("Course ID is required");
       }
 
-      // Check if course exists
       const course = await storage.getCourse(req.body.courseId);
       if (!course) {
         return res.status(404).send("Course not found");
       }
 
-      // Check if user is already enrolled
       const existingEnrollment = await storage.getEnrollment(req.user.id, req.body.courseId);
       if (existingEnrollment) {
         return res.status(400).send("Already enrolled in this course");
@@ -260,4 +281,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Dummy hashPassword function - replace with your actual implementation
+async function hashPassword(password: string): Promise<string> {
+  return password; // Replace with actual hashing logic
 }
