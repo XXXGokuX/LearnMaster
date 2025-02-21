@@ -161,7 +161,7 @@ export default function AdminCourses() {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/courses', true);
       xhr.withCredentials = true;
-      xhr.timeout = 300000; 
+      xhr.timeout = 300000;
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -557,7 +557,7 @@ export default function AdminCourses() {
           </div>
         </div>
 
-        <motion.div 
+        <motion.div
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -571,11 +571,12 @@ export default function AdminCourses() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
               <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 h-full flex flex-col">
-                <div className="relative aspect-video">
+                <div className="relative h-48">
                   <img
                     src={course.thumbnail}
                     alt={course.title}
                     className="w-full h-full object-cover rounded-t-lg"
+                    style={{ objectPosition: 'center' }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-t-lg" />
                   <Badge className="absolute top-4 left-4 bg-white/90 text-primary">
