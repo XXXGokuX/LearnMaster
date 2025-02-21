@@ -89,31 +89,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Get lecture files sorted by index
-        const lectureFiles = Object.entries(files)
-          .filter(([key]) => key.startsWith('lecture_'))
-          .sort((a, b) => {
-            const aIndex = parseInt(a[0].split('_')[1]);
-            const bIndex = parseInt(b[0].split('_')[1]);
-            return aIndex - bIndex;
-          })
-          .map(([, files]) => files[0]);
-
-        console.log("Processed lecture files:", lectureFiles);
-
         // Process lectures array from form data
         const lectures = [];
-        for (let index = 0; index < 5; index++) {
-          const titleKey = `lectures[${index}][title]`;
-          const descriptionKey = `lectures[${index}][description]`;
-          const lectureFile = lectureFiles[index];
+        const lectureCount = Object.keys(req.body)
+          .filter(key => key.startsWith('lectures[') && key.endsWith('][title]'))
+          .length;
+
+        for (let i = 0; i < lectureCount; i++) {
+          const titleKey = `lectures[${i}][title]`;
+          const descriptionKey = `lectures[${i}][description]`;
+          const lectureFile = files[`lecture_${i}`]?.[0];
 
           if (req.body[titleKey] && lectureFile) {
             lectures.push({
               type: "video" as const,
               title: req.body[titleKey],
               description: req.body[descriptionKey] || '',
-              url: `/uploads/videos/${lectureFile.filename}`
+              url: `/uploads/videos/${lectureFile.filename}`,
+              duration: "TBD",
+              fileSize: `${Math.round(lectureFile.size / (1024 * 1024))}MB`
             });
           }
         }
@@ -208,7 +202,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!course) return res.status(404).send("Course not found");
     res.json(course);
   });
-
 
   app.delete("/api/courses/:id", async (req, res) => {
     if (!req.isAuthenticated() || req.user?.role !== "admin") {
