@@ -3,10 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, LogOut, PlusCircle, Users, Book } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const [location, navigate] = useLocation();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Query for courses
+  const { data: courses } = useQuery({
+    queryKey: ["/api/courses"],
+    enabled: !!searchTerm, // Only fetch when there's a search term
+  });
+
+  // Handle search submit
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/browse-courses?search=${encodeURIComponent(searchTerm)}`);
+    }
+  };
 
   return (
     <nav className="fixed top-0 w-full bg-white border-b z-50">
@@ -56,14 +73,23 @@ export function Navbar() {
 
           {/* Search Bar */}
           <div className="hidden md:flex items-center flex-1 max-w-md mx-8">
-            <div className="relative w-full">
+            <form onSubmit={handleSearch} className="relative w-full">
               <Input
                 type="search"
                 placeholder="Search courses..."
                 className="w-full pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
           </div>
 
           {/* Auth Buttons */}

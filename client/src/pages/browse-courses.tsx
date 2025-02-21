@@ -9,10 +9,14 @@ import { Clock, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/Navbar";
+import { useLocation } from "wouter";
 
 export default function BrowseCourses() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
+  const searchParams = new URLSearchParams(location.split('?')[1]);
+  const searchTerm = searchParams.get('search') || '';
 
   const { data: courses, isLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
@@ -47,6 +51,16 @@ export default function BrowseCourses() {
     return enrollments?.some((e) => e.courseId === courseId);
   };
 
+  const filteredCourses = courses?.filter(course => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      course.title.toLowerCase().includes(searchLower) ||
+      course.description.toLowerCase().includes(searchLower) ||
+      course.category.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -57,12 +71,11 @@ export default function BrowseCourses() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          Browse Courses
+          {searchTerm ? `Search Results for "${searchTerm}"` : 'Browse Courses'}
         </motion.h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
-            // Loading skeleton
             Array(6)
               .fill(0)
               .map((_, i) => (
@@ -76,8 +89,15 @@ export default function BrowseCourses() {
                   </CardContent>
                 </Card>
               ))
+          ) : filteredCourses?.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <h2 className="text-2xl font-semibold mb-4">No courses found</h2>
+              <p className="text-muted-foreground">
+                Try adjusting your search terms or browse our course catalog
+              </p>
+            </div>
           ) : (
-            courses?.map((course, index) => (
+            filteredCourses?.map((course, index) => (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 20 }}
