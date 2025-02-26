@@ -1,0 +1,82 @@
+# Step 1: Copy Nginx Configuration
+On your VPS, create the Nginx configuration file:
+```bash
+sudo nano /etc/nginx/sites-available/sharebazz.in
+```
+
+Copy and paste this configuration:
+```nginx
+server {
+    listen 80;
+    server_name sharebazz.in;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+Save the file by pressing CTRL+X, then Y, then Enter.
+
+# Step 2: Verify Nginx Configuration
+Run this command to check if the configuration is valid:
+```bash
+sudo nginx -t
+```
+You should see:
+- nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+- nginx: configuration test is successful
+
+# Step 3: Enable the Site and Get SSL
+Run these commands:
+```bash
+# Create symbolic link
+sudo ln -s /etc/nginx/sites-available/sharebazz.in /etc/nginx/sites-enabled/
+
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# Get SSL certificate
+sudo certbot --nginx -d sharebazz.in
+
+# Restart Nginx
+sudo systemctl restart nginx
+```
+
+# Step 4: Start the Application
+In your application directory:
+```bash
+# Install dependencies
+npm install
+
+# Build the application
+npm run build
+
+# Start with PM2
+pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 startup
+```
+
+# Verify Everything is Working
+1. Check Nginx status:
+```bash
+sudo systemctl status nginx
+```
+
+2. Check PM2 processes:
+```bash
+pm2 list
+```
+
+3. Check application logs:
+```bash
+pm2 logs
+```
+
+Your site should now be accessible at https://sharebazz.in
