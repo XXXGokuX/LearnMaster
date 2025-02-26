@@ -1,31 +1,112 @@
-# Run these commands on your VPS:
+# Hostinger VPS Deployment Steps
 
-1. Install Certbot and get SSL certificate:
+1. Initial Server Setup:
 ```bash
-sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d sharebazz.in
+# Connect to your Hostinger VPS via SSH
+ssh username@your-vps-ip
+
+# Update system packages
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 20.x
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Install required system packages
+sudo apt install -y nginx git
 ```
 
-2. Enable the Nginx site:
+2. Clone and Setup Application:
 ```bash
-sudo ln -s /etc/nginx/sites-available/sharebazz.in /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
+# Create application directory
+mkdir -p /var/www/lms
+cd /var/www/lms
 
-3. Build and start the application:
-```bash
-# Navigate to your application directory
-cd /path/to/your/app
+# Clone your repository
+git clone your-repo-url .
 
 # Install dependencies
 npm install
 
-# Build the application
-npm run build
+# Copy environment file and update it
+cp .env.example .env
+nano .env
+```
 
-# Start with PM2
-pm2 start ecosystem.config.js --env production
+3. Setup Database:
+```bash
+# Create database and user
+sudo -u postgres psql
+
+postgres=# CREATE DATABASE lms_db;
+postgres=# CREATE USER lms_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+postgres=# GRANT ALL PRIVILEGES ON DATABASE lms_db TO lms_user;
+postgres=# \q
+
+# Update DATABASE_URL in .env with your credentials
+nano .env
+```
+
+4. Deploy Application:
+```bash
+# Make deploy script executable
+chmod +x deploy.sh
+
+# Run deployment script
+./deploy.sh
+```
+
+5. Configure Nginx:
+```bash
+# Edit Nginx configuration
+sudo nano /etc/nginx/sites-available/lms
+
+# Add your domain to nginx.conf
+sudo nano nginx.conf
+# Replace 'your_domain.com' with your actual domain
+
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+6. Setup SSL with Hostinger:
+- Go to your Hostinger control panel
+- Navigate to the SSL section
+- Install SSL certificate for your domain
+- Wait for the SSL certificate to be issued and installed
+
+7. Verify Deployment:
+```bash
+# Check application status
+pm2 status
+pm2 logs lms-app
+
+# Test Nginx configuration
+curl -I https://your-domain.com
+```
+
+8. Setup Automatic Startup:
+```bash
+# Save PM2 process list
 pm2 save
+
+# Setup PM2 to start on system boot
 pm2 startup
 ```
+
+Important Notes:
+- Replace 'your-domain.com' with your actual domain
+- Update DATABASE_URL in .env with your actual database credentials
+- Make sure all environment variables in .env are properly set
+- Keep your SSL certificates up to date
+- Regularly backup your database
+
+For troubleshooting:
+- Check application logs: `pm2 logs lms-app`
+- Check Nginx error logs: `sudo tail -f /var/log/nginx/error.log`
+- Run the troubleshooting script: `./troubleshoot_nginx.sh`

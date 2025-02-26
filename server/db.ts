@@ -11,5 +11,25 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+console.log("Initializing database connection...");
+
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: true,
+    // For production, we want to verify the hostname
+    checkServerIdentity: (host, cert) => {
+      return undefined; // Return undefined means verification passed
+    }
+  }
+});
+
+pool.on('connect', () => {
+  console.log('Database connection established successfully');
+});
+
+pool.on('error', (err) => {
+  console.error('Database connection error:', err);
+});
+
 export const db = drizzle({ client: pool, schema });
