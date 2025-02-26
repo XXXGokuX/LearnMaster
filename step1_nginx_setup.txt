@@ -1,0 +1,38 @@
+# Step 1: Setting up Nginx
+
+1. SSH into your Hostinger VPS (if not already connected)
+
+2. Create Nginx configuration file:
+```bash
+sudo nano /etc/nginx/sites-available/sharebazz.in
+```
+
+3. Copy and paste this exact configuration:
+```nginx
+server {
+    listen 80;
+    server_name sharebazz.in;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+4. Save the file:
+- Press CTRL + X
+- Press Y to confirm
+- Press Enter to save
+
+5. Verify the configuration:
+```bash
+sudo nginx -t
+```
+You should see: "nginx: configuration test is successful"
+
+Please let me know once you've completed these steps, and I'll guide you through the next part.
